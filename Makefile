@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wall -Werror -Wpedantic
+CFLAGS=-Wall -Wextra -Wpedantic
 all: smb
 smb: smb.c
 clean:
