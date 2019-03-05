@@ -7,6 +7,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#define MSG_CREATE_BOARD 0
+
 /* 
  * smb
  * [s]ecure [m]essage [b]oard
@@ -45,6 +47,9 @@ int listen_sock(){
       return sock;
 }
 
+int mb_handler(int mb_type, char* str_arg){
+}
+
 /* creates an mb in the working directory */
 void create_mb(char* name){
       // FILE* fp = fopen(name, "w");
@@ -58,9 +63,19 @@ void create_mb(char* name){
       addr.sun_family = AF_UNIX;
       strncpy(addr.sun_path, name, sizeof(addr.sun_path));
 
-      if(bind(sock, (struct sockaddr*)&addr, SUN_LEN(&addr)) == -1)return;
+      if(bind(sock, (struct sockaddr*)&addr, SUN_LEN(&addr)) == -1
+      || listen(sock, 0) == -1)return;
+
+      int peer_sock = -1;
+      /* recvd info */
+      /* str_buf contains up to 200 chars */
+      int mb_type; char str_buf[201];
 
       while(1){
+            memset(str_buf, 0, 201);
+            peer_sock = accept(sock, NULL, NULL);
+            read(peer_sock, &mb_type, sizeof(int));
+            read(peer_sock, str_buf, 200);
       }
 }
 
