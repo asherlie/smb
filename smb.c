@@ -205,6 +205,16 @@ it will lookup ref_num from thread name string
 the struct that stores thread names and ref_nums
 is the only necessary struct - it will be mutex locked
 and shared between the client read thread and client while loop below
+
+TODO: write notify function compatible with pthread_create:
+      maintain peer sock array from host side
+
+TODO: write thread name ref_num struct:
+      char* th_name; int ref_num;
+      pthread_mutex_lock lck;
+
+TODO: spawn a read() thread for each client:
+      thread should update the above struct
 #endif
 
       while((b_read = getline(&inp, &sz, stdin)) != EOF){
