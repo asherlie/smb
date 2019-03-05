@@ -9,10 +9,13 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#define MSG_CREATE_BOARD  0
-#define MSG_REMOVE_BOARD  1
+/*
+ *#define MSG_CREATE_BOARD  0
+ *#define MSG_REMOVE_BOARD  1
+ */
 #define MSG_CREATE_THREAD 2
 #define MSG_REMOVE_THREAD 3
+#define MSG_REPLY_THREAD  4
 
 /* 
  * smb
@@ -60,16 +63,29 @@ int listen_sock(){
 
 /* host code */
 
-uid_t get_peer_cred(int sock){
+uid_t get_peer_cred(int p_sock){
+      uid_t uid;
+      #ifdef SO_PEERCRED
+      socklen_t len = sizeof(struct ucred);
+      struct ucred cred;
+      memset(&cred, 0, sizeof(struct ucred));
+      getsockopt(p_sock, SOL_SOCKET, SO_PEERCRED, &cred, &len);
+      uid = cred.uid;
+      #else
+      gid_t gid;
+      getpeereid(p_sock, &uid, &gid);
+      #endif
+      return uid;
 }
 
 _Bool mb_handler(int mb_type, int ref_no, char* str_arg){
       switch(mb_type){
-            case MSG_CREATE_BOARD:
-                  puts("board created");
+            case MSG_CREATE_THREAD:
+                  puts("thread created");
                   break;
-            case MSG_REMOVE_BOARD:
-                  printf("board %i removed\n", ref_no);
+            case MSG_REMOVE_THREAD:
+                  /* only she who created a thread can delete it */
+                  printf("thread %i removed\n", ref_no);
                   break;
             default: return 0;
       }
@@ -129,20 +145,23 @@ int send_mb_r(struct mb_msg mb_a, int sock){
       return ret;
 }
 
-/* returns board ref no */
-int create_board(char* b_name, int sock){
+/* returns thread ref no */
+int create_thread(char* th_name, int sock){
       struct mb_msg mb_a;
-      mb_a.mb_inf[0] = MSG_CREATE_BOARD;
+      mb_a.mb_inf[0] = MSG_CREATE_THREAD;
       mb_a.mb_inf[1] = -1;
       memset(mb_a.str_arg, 0, 201);
-      strncpy(mb_a.str_arg, b_name, 200);
-      send_mb_r(mb_a, sock);
-      return -1;
+      strncpy(mb_a.str_arg, th_name, 200);
+      return send_mb_r(mb_a, sock);
 }
 
-/* returns thread ref no */
-int create_thread(){
-      return -1;
+int reply_thread(int th_ref_no, char* msg, int sock){
+      struct mb_msg mb_a;
+      mb_a.mb_inf[0] = MSG_REPLY_THREAD;
+      mb_a.mb_inf[1] = th_ref_no;
+      memset(mb_a.str_arg, 0, 201);
+      strncpy(mb_a.str_arg, msg, 200);
+      return send_mb_r(mb_a, sock);
 }
 
 _Bool client(char* sock_path){
