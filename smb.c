@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+
 #include <limits.h>
+#include <sys/stat.h>
 
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -60,13 +62,14 @@ _Bool mb_handler(int mb_type, char* str_arg){
 
 /* creates an mb in the working directory */
 void create_mb(char* name){
-      FILE* fp = fopen(name, "r");
-      if(fp){
-            fclose(fp);
-            puts("we opened it");
+      // checking for existence of socket
+      struct stat st;
+      memset(&st, 0, sizeof(struct stat));
+      stat(name, &st);
+      if(st.st_ino != 0){
+            printf("mb: \"%s\" already exists\n", name);
             return;
       }
-      puts("escaped");
       pid_t pid = fork();
       if(pid > 0){
             printf("mb spawned at pid: %i\n", pid);
