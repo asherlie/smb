@@ -100,8 +100,12 @@ void create_mb(char* name){
 }
 
 int main(int a, char** b){
-      create_mb("u_sock");
-      puts("failed to create mb");
-      (void)a; (void)b;
+      for(int i = 1; i < a-1; ++i){
+            if(*b[i] == '-' && b[i][1] == 'C'){
+                  // b[i+1] will always exist
+                  create_mb(b[i+1]);
+                  puts("failed to create mb");
+            }
+      }
       return 0;
 }
