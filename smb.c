@@ -47,14 +47,31 @@ int listen_sock(){
       return sock;
 }
 
-int mb_handler(int mb_type, char* str_arg){
+_Bool mb_handler(int mb_type, char* str_arg){
+      switch(mb_type){
+            case MSG_CREATE_BOARD:
+                  puts("board created");
+                  break;
+            default: return 0;
+      }
+      printf("str arg: %s recvd\n", str_arg);
+      return 1;
 }
 
 /* creates an mb in the working directory */
 void create_mb(char* name){
-      // FILE* fp = fopen(name, "w");
+      FILE* fp = fopen(name, "r");
+      if(fp){
+            fclose(fp);
+            puts("we opened it");
+            return;
+      }
+      puts("escaped");
       pid_t pid = fork();
-      if(pid > 0)exit(EXIT_SUCCESS);
+      if(pid > 0){
+            printf("mb spawned at pid: %i\n", pid);
+            exit(EXIT_SUCCESS);
+      }
       int sock = listen_sock();
       if(sock == -1)return;
 
@@ -80,7 +97,8 @@ void create_mb(char* name){
 }
 
 int main(int a, char** b){
-      create_mb("");
+      create_mb("u_sock");
+      puts("failed to create mb");
       (void)a; (void)b;
       return 0;
 }
