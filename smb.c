@@ -174,12 +174,59 @@ _Bool client(char* sock_path){
       if(connect(sock, (struct sockaddr*)&r_addr, sizeof(struct sockaddr_un)) == -1)
             return 0;
 
-      // char* inp = NULL;
+      int cur_thread = -1;
+
+      char* inp = NULL, * tmp_p;
+      size_t sz = 0;
+      int b_read;
+
+      /*
+      how should the client print messages? using sockets or reading from text file?
+      leaning towards sockets
+      each new thread needs to be spread to every user
+      host could spawn a notify thread each time
+      iterates thru a quick -1 terminated arr of sockets
+      passed as the pthread arg
+      sends a message to each contaning ref num and 200 chars
+      each thread in client now needs to listen() and spawn a thread to read()
+      no need to accept() - this is handled by host
+      just continuously read() an int and 200 char str
+      with each new read(), we add thread ref num and name to our struct
+      host doesn't even need a complex struct, come to think of it, it can just
+      authenticate users and send out thread ref nums and names
+      this struct can be built client-side 
+
+      maybe don't even need struct, each client can just read() and if cur_thread
+      != ref_no, don't print anything
+      otherwise, print uid_t and message
+
+      all switch thread does is change cur_thread
+      it will lookup ref_num from thread name string
+      the struct that stores thread names and ref_nums
+      is the only necessary struct - it will be mutex locked
+      and shared between the client read thread and client while loop below
+      */
+
+      while((b_read = getline(&inp, &sz, stdin)) != EOF){
+            inp[--b_read] = 0;
+            if(*inp == '/' && b_read > 1){
+                  switch(inp[1]){
+                        case 't':
+                              /* switch threads */
+                              ;
+                        case 'c':
+                              if((tmp_p = strchr(inp, ' ')))
+                                    create_thread(tmp_p+1, sock);
+                              break;
+                  }
+            }
+      }
       return 1;
 }
 
 /* end client code */
 
+/* TODO: is this more of a chatroom? */
 int main(int a, char** b){
       if(a == 1){
             printf("usage: %s ... \n", *b);
