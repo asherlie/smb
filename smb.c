@@ -180,32 +180,32 @@ _Bool client(char* sock_path){
       size_t sz = 0;
       int b_read;
 
-      /*
-      how should the client print messages? using sockets or reading from text file?
-      leaning towards sockets
-      each new thread needs to be spread to every user
-      host could spawn a notify thread each time
-      iterates thru a quick -1 terminated arr of sockets
-      passed as the pthread arg
-      sends a message to each contaning ref num and 200 chars
-      each thread in client now needs to listen() and spawn a thread to read()
-      no need to accept() - this is handled by host
-      just continuously read() an int and 200 char str
-      with each new read(), we add thread ref num and name to our struct
-      host doesn't even need a complex struct, come to think of it, it can just
-      authenticate users and send out thread ref nums and names
-      this struct can be built client-side 
+#if 0
+how should the client print messages? using sockets or reading from text file?
+leaning towards sockets
+each new thread needs to be spread to every user
+host could spawn a notify thread each time
+iterates thru a quick -1 terminated arr of sockets
+passed as the pthread arg
+sends a message to each contaning ref num and 200 chars
+each thread in client now needs to listen() and spawn a thread to read()
+no need to accept() - this is handled by host
+just continuously read() an int and 200 char str
+with each new read(), we add thread ref num and name to our struct
+host doesn't even need a complex struct, come to think of it, it can just
+authenticate users and send out thread ref nums and names
+this struct can be built client-side 
 
-      maybe don't even need struct, each client can just read() and if cur_thread
-      != ref_no, don't print anything
-      otherwise, print uid_t and message
+maybe don't even need struct, each client can just read() and if cur_thread
+!= ref_no, don't print anything
+otherwise, print uid_t and message
 
-      all switch thread does is change cur_thread
-      it will lookup ref_num from thread name string
-      the struct that stores thread names and ref_nums
-      is the only necessary struct - it will be mutex locked
-      and shared between the client read thread and client while loop below
-      */
+all switch thread does is change cur_thread
+it will lookup ref_num from thread name string
+the struct that stores thread names and ref_nums
+is the only necessary struct - it will be mutex locked
+and shared between the client read thread and client while loop below
+#endif
 
       while((b_read = getline(&inp, &sz, stdin)) != EOF){
             inp[--b_read] = 0;
