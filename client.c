@@ -25,8 +25,20 @@ struct th_hash_lst init_th_hash_lst(int buckets){
       return thl;
 }
 
-/* looks up a thread by its label */
-struct thread_lst* thread_lookup(struct th_hash_lst thl, char* th_name){
+/* looks up a thread by its label or ref_no 
+ * if both are provided, label is hashed
+ * for lookup
+ */
+struct thread_lst* thread_lookup(struct th_hash_lst thl, char* th_name, int ref_no){
+      if(!th_name){
+            for(int i = 0; thl.in_use[i] != -1; ++i){
+                  for(struct thread_lst* cur = thl.threads[thl.in_use[i]]; cur->next;
+                      cur = cur->next){
+                        if(cur->ref_no == ref_no)return cur;
+                  }
+            }
+            return NULL;
+      }
       int ind = *th_name % thl.bux;
       if(!thl.threads[ind])return NULL;
       for(struct thread_lst* cur = thl.threads[ind]; cur->next; cur = cur->next)
@@ -38,16 +50,30 @@ struct thread_lst* thread_lookup(struct th_hash_lst thl, char* th_name){
 _Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name){
       /* int ind = ref_no % thl->bux; */
       /* TODO: should more chars be summed for hashing */
+      // TODO: ref_no should be used for hashing because the most
+      // expensive lookup is done using ref_no from read_notif_pth
       int ind = *name % thl->bux;
       struct thread_lst* cur;
-      if(!thl->threads[ind])
+      if(!thl->threads[ind]){
             cur = thl->threads[ind] = malloc(sizeof(struct thread_lst));
+            thl->in_use[thl->n++] = ind;
+      }
       else
             /* TODO: DON'T ITERATE THROUGH EVERYTHING - KEEP A PTR TO LAST */
             for(cur = thl->threads[ind]; cur->next; cur = cur->next)if(cur->ref_no == ref_no)return 1;
       cur->ref_no = ref_no;
       strncpy(cur->label, name, sizeof(cur->label)-1);
+
+      /* msg stack! */
+      /* TODO: this should be done in a separate init_msg_stack func */
+      cur->n_msg = 0;
+      cur->msg_stack_cap = 50;
+      /* TODO: free */
+      cur->msg_stack = malloc(sizeof(char*)*cur->msg_stack_cap);
+      pthread_mutex_init(&cur->thread_msg_stack_lck, NULL);
+
       cur->next = NULL;
+
       return 0;
 }
 
@@ -55,6 +81,7 @@ void* read_notif_pth(void* rnp_arg_v){
       struct read_notif_pth_arg* rnp_arg = (struct read_notif_pth_arg*)rnp_arg_v;
       int ref_no, msg_type;
       char buf[201];
+      struct thread_lst* cur_th = NULL;
       while(1){
             memset(buf, 0, 201);
             /* reading MSGTYPE */
@@ -66,7 +93,15 @@ void* read_notif_pth(void* rnp_arg_v){
             /* if we've received a msgtype_notif, add thread */
             if(msg_type == MSGTYPE_NOTIF)
                   add_thread_thl(rnp_arg->thl, ref_no, buf);
+            /* as of now, only other msg_type is MSGTYPE_MSG */
             else{
+                  // TODO: thread lookup is too slow without label
+                  // TODO: should ref_no be used to hash?
+                  // this is the most frequent lookup
+                  cur_th = thread_lookup(*rnp_arg->thl, NULL, ref_no);
+                  pthread_mutex_lock(&cur_th->thread_msg_stack_lck);
+                  // cur_th->msg
+                  // just update ref_no's thread entry 
                   /* ref_no, string and uid_t must be returned to main thread
                    * to be checked cur_thread against and possibly printed
                    */
@@ -119,7 +154,8 @@ _Bool client(char* sock_path){
       pthread_t read_notif_pth_pth;
       pthread_create(&read_notif_pth_pth, NULL, &read_notif_pth, &rnpa);
 
-      int cur_thread = -1;
+      // int cur_thread = -1;
+      struct thread_lst* cur_thread = NULL;
 
       char* inp = NULL, * tmp_p;
       size_t sz = 0;
@@ -169,7 +205,7 @@ TODO: spawn a read() thread for each client:
                   switch(inp[1]){
                         case 't':
                               /* TODO: error handlign */
-                              cur_thread = thread_lookup(thl, strchr(inp, ' ')+1)->ref_no;
+                              cur_thread = thread_lookup(thl, strchr(inp, ' ')+1, -1);
                               break;
                               /* switch threads */
                         case 'c':
