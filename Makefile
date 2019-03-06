@@ -1,6 +1,6 @@
 CC=gcc
-CFLAGS=-Wall -Wextra -Wpedantic
+CFLAGS=-Wall -Wextra -Wpedantic -lpthread
 all: smb
-smb: smb.c
+smb: smb.c host.c client.c shared.c
 clean:
 	rm -f smb
