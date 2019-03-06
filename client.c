@@ -70,11 +70,31 @@ _Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name){
       cur->msg_stack_cap = 50;
       /* TODO: free */
       cur->msg_stack = malloc(sizeof(char*)*cur->msg_stack_cap);
+      /* TODO: destroy this */
       pthread_mutex_init(&cur->thread_msg_stack_lck, NULL);
 
       cur->next = NULL;
 
       return 0;
+}
+
+_Bool insert_msg_msg_stack(struct thread_lst* th, char* msg){
+      _Bool resz = 0;
+      pthread_mutex_lock(&th->thread_msg_stack_lck);
+      if(th->n_msg == th->msg_stack_cap){
+            resz = 1;
+            char** tmp = malloc(sizeof(char*)*th->msg_stack_cap);
+            memcpy(tmp, th->msg_stack, sizeof(char*)*th->n_msg);
+            free(th->msg_stack);
+            th->msg_stack = tmp;
+      }
+      th->msg_stack[th->n_msg++] = calloc(201, 1);
+      strncpy(th->msg_stack[th->n_msg], msg, 200);
+      pthread_mutex_unlock(&th->thread_msg_stack_lck);
+      return resz;
+}
+
+struct thread_lst* pop_msg_stack(struct thread_lst* th){
 }
 
 void* read_notif_pth(void* rnp_arg_v){
@@ -99,8 +119,8 @@ void* read_notif_pth(void* rnp_arg_v){
                   // TODO: should ref_no be used to hash?
                   // this is the most frequent lookup
                   cur_th = thread_lookup(*rnp_arg->thl, NULL, ref_no);
-                  pthread_mutex_lock(&cur_th->thread_msg_stack_lck);
-                  // cur_th->msg
+                  /* adding message to msg stack */
+                  insert_msg_msg_stack(cur_th, buf);
                   // just update ref_no's thread entry 
                   /* ref_no, string and uid_t must be returned to main thread
                    * to be checked cur_thread against and possibly printed
