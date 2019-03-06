@@ -94,7 +94,14 @@ _Bool insert_msg_msg_stack(struct thread_lst* th, char* msg){
       return resz;
 }
 
-struct thread_lst* pop_msg_stack(struct thread_lst* th){
+char* pop_msg_stack(struct thread_lst* th){
+      char* ret = NULL;
+      pthread_mutex_lock(&th->thread_msg_stack_lck);
+      if(th->n_msg){
+            ret = th->msg_stack[--th->n_msg];
+      }
+      pthread_mutex_unlock(&th->thread_msg_stack_lck);
+      return ret;
 }
 
 void* read_notif_pth(void* rnp_arg_v){
@@ -120,7 +127,7 @@ void* read_notif_pth(void* rnp_arg_v){
                   // this is the most frequent lookup
                   cur_th = thread_lookup(*rnp_arg->thl, NULL, ref_no);
                   /* adding message to msg stack */
-                  insert_msg_msg_stack(cur_th, buf);
+                  if(cur_th)insert_msg_msg_stack(cur_th, buf);
                   // just update ref_no's thread entry 
                   /* ref_no, string and uid_t must be returned to main thread
                    * to be checked cur_thread against and possibly printed
@@ -180,44 +187,6 @@ _Bool client(char* sock_path){
       char* inp = NULL, * tmp_p;
       size_t sz = 0;
       int b_read;
-
-/*
-how should the client print messages? using sockets or reading from text file?
-leaning towards sockets
-each new thread needs to be spread to every user
-host could spawn a notify thread each time
-iterates thru a quick -1 terminated arr of sockets
-passed as the pthread arg
-sends a message to each contaning ref num and 200 chars
-each thread in client now needs to listen() and spawn a thread to read()
-no need to accept() - this is handled by host
-just continuously read() an int and 200 char str
-with each new read(), we add thread ref num and name to our struct
-host doesn't even need a complex struct, come to think of it, it can just
-authenticate users and send out thread ref nums and names
-this struct can be built client-side 
-
-maybe don't even need struct, each client can just read() and if cur_thread
-!= ref_no, don't print anything
-otherwise, print uid_t and message
-
-all switch thread does is change cur_thread
-it will lookup ref_num from thread name string
-the struct that stores thread names and ref_nums
-is the only necessary struct - it will be mutex locked
-and shared between the client read thread and client while loop below
-
-TODO: write notify function compatible with pthread_create:
-      maintain peer sock array from host side
-
-TODO: write thread name ref_num struct:
-      char* th_name; int ref_num;
-      pthread_mutex_lock lck;
-
-TODO: spawn a read() thread for each client:
-      we'll be reading thread ref_no, message contents
-      thread should update the above struct
-*/
 
       while((b_read = getline(&inp, &sz, stdin)) != EOF){
             inp[--b_read] = 0;

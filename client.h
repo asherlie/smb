@@ -11,12 +11,6 @@ struct thread_lst{
       struct thread_lst* next;
 };
 
-/*
- *struct msg_pass{
- *      int ref_no;
- *};
- */
-
 struct th_hash_lst{
       struct thread_lst** threads;
 
