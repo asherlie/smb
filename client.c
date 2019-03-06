@@ -188,6 +188,12 @@ _Bool client(char* sock_path){
       size_t sz = 0;
       int b_read;
 
+      while(1){
+            if((tmp_p = pop_msg_stack(cur_thread)))puts(tmp_p);
+            usleep(1000);
+      }
+
+      // this must be in separate thread
       while((b_read = getline(&inp, &sz, stdin)) != EOF){
             inp[--b_read] = 0;
             if(*inp == '/' && b_read > 1){
