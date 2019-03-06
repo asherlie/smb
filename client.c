@@ -25,12 +25,20 @@ struct th_hash_lst init_th_hash_lst(int buckets){
       return thl;
 }
 
+/* looks up a thread by its label */
 struct thread_lst* thread_lookup(struct th_hash_lst thl, char* th_name){
+      int ind = *th_name % thl.bux;
+      if(!thl.threads[ind])return NULL;
+      for(struct thread_lst* cur = thl.threads[ind]; cur->next; cur = cur->next)
+            if(strstr(thl.threads[ind]->label, th_name))return thl.threads[ind];
+      return NULL;
 }
 
 /* return existence of ref_no */
 _Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name){
-      int ind = ref_no % thl->bux;
+      /* int ind = ref_no % thl->bux; */
+      /* TODO: should more chars be summed for hashing */
+      int ind = *name % thl->bux;
       struct thread_lst* cur;
       if(!thl->threads[ind])
             cur = thl->threads[ind] = malloc(sizeof(struct thread_lst));
@@ -45,14 +53,24 @@ _Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name){
 
 void* read_notif_pth(void* rnp_arg_v){
       struct read_notif_pth_arg* rnp_arg = (struct read_notif_pth_arg*)rnp_arg_v;
-      int ref_no;
+      int ref_no, msg_type;
       char buf[201];
       while(1){
             memset(buf, 0, 201);
+            /* reading MSGTYPE */
+            read(rnp_arg->sock, &msg_type, sizeof(int));
+            /* reading ref no */
             read(rnp_arg->sock, &ref_no, sizeof(int));
             read(rnp_arg->sock, buf, 200);
 
-            add_thread_thl(rnp_arg->thl, ref_no, buf);
+            /* if we've received a msgtype_notif, add thread */
+            if(msg_type == MSGTYPE_NOTIF)
+                  add_thread_thl(rnp_arg->thl, ref_no, buf);
+            else{
+                  /* ref_no, string and uid_t must be returned to main thread
+                   * to be checked cur_thread against and possibly printed
+                   */
+            }
       }
 }
 
@@ -94,7 +112,12 @@ _Bool client(char* sock_path){
 
       struct th_hash_lst thl = init_th_hash_lst(100);
 
-      pthread_t read_notif_pth;
+      struct read_notif_pth_arg rnpa;
+      rnpa.sock = sock;
+      rnpa.thl = &thl;
+
+      pthread_t read_notif_pth_pth;
+      pthread_create(&read_notif_pth_pth, NULL, &read_notif_pth, &rnpa);
 
       int cur_thread = -1;
 

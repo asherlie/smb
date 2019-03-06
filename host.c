@@ -91,6 +91,8 @@ void* notify_pth(void* v_arg){
              * if this is a thread creation
              * notification
              */
+            /* MSGTYPE */
+            send(arg->socks[i], &arg->msg_type, sizeof(int), 0);
             /* sending ref_no */
             send(arg->socks[i], &arg->ref_no, sizeof(int), 0);
             send(arg->socks[i], arg->msg, 200, 0);
@@ -98,17 +100,36 @@ void* notify_pth(void* v_arg){
       return NULL;
 }
 
-_Bool notify(int* peers, int n_peers, int ref_no, char* msg){
+_Bool spread_msg(int* peers, int n_peers, int ref_no, char* msg){
       struct notif_arg arg;
       arg.socks = peers;
       arg.n_peers = n_peers;
       arg.ref_no = ref_no;
       arg.msg_buf = msg;
+      arg.msg_type = MSGTYPE_MSG;
       memset(arg.msg, 0, 201);
+
       /* as of now, even if no meaningful data is being sent,
        * 200 empty bytes will be sent
        */
       if(arg.msg_buf)strncpy(arg.msg, msg, 200);
+
+      pthread_t pth;
+      pthread_create(&pth, NULL, &notify_pth, &arg);
+      return !pthread_join(pth, NULL);
+}
+
+_Bool spread_thread_notif(int* peers, int n_peers, int ref_no, char* label){
+      struct notif_arg arg;
+      arg.socks = peers;
+      arg.n_peers = n_peers;
+      arg.ref_no = ref_no;
+      arg.msg_buf = label;
+      arg.msg_type = MSGTYPE_NOTIF;
+      memset(arg.msg, 0, 201);
+      /* only 50 chars are used */
+      strncpy(arg.msg, label, 50);
+
       pthread_t pth;
       pthread_create(&pth, NULL, &notify_pth, &arg);
       return !pthread_join(pth, NULL);
