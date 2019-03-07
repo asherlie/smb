@@ -44,7 +44,7 @@ struct thread_lst* thread_lookup(struct th_hash_lst thl, char* th_name, int ref_
       }
       int ind = *th_name % thl.bux;
       if(!thl.threads[ind])return NULL;
-      for(struct thread_lst* cur = thl.threads[ind]; cur->next; cur = cur->next)
+      for(struct thread_lst* cur = thl.threads[ind]; cur; cur = cur->next)
             if(strstr(thl.threads[ind]->label, th_name))return thl.threads[ind];
       return NULL;
 }
@@ -63,7 +63,7 @@ _Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name){
       }
       else
             /* TODO: DON'T ITERATE THROUGH EVERYTHING - KEEP A PTR TO LAST */
-            for(cur = thl->threads[ind]; cur->next; cur = cur->next)if(cur->ref_no == ref_no)return 1;
+            for(cur = thl->threads[ind]; cur; cur = cur->next)if(cur->ref_no == ref_no)return 1;
       cur->ref_no = ref_no;
       strncpy(cur->label, name, sizeof(cur->label)-1);
 
@@ -221,8 +221,10 @@ _Bool client(char* sock_path){
       r_addr.sun_family = AF_UNIX;
       strncpy(r_addr.sun_path, sock_path, sizeof(r_addr.sun_path));
 
-      if(connect(sock, (struct sockaddr*)&r_addr, sizeof(struct sockaddr_un)) == -1)
+      if(connect(sock, (struct sockaddr*)&r_addr, sizeof(struct sockaddr_un)) == -1){
+            printf("failed to connect to host \"%s\"\n", sock_path);
             return 0;
+      }
 
       struct th_hash_lst thl = init_th_hash_lst(100);
 
