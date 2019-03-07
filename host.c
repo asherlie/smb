@@ -11,6 +11,15 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+int u_ref_no = 0;
+
+void log_f(char* msg){
+      FILE* fp = fopen("LOGFILE", "a");
+      fputs(msg, fp);
+      fputc('\n', fp);
+      fclose(fp);
+}
+
 /* TODO: throw this in a struct */
 int* peers, n_peers, peer_cap;
 pthread_mutex_t peer_mut;
@@ -32,6 +41,7 @@ uid_t get_peer_cred(int p_sock){
 
 /* arg->socks will be maintained in the host loop @ create_mb */
 void* notify_pth(void* v_arg){
+      log_f("notify_pth called");
       struct notif_arg* arg = (struct notif_arg*)v_arg;
       pthread_mutex_lock(&peer_mut);
       for(int i = 0; i < arg->n_peers; ++i){
@@ -41,12 +51,16 @@ void* notify_pth(void* v_arg){
              * notification
              */
             /* MSGTYPE */
+            log_f("sending msgtype");
             send(arg->socks[i], &arg->msg_type, sizeof(int), 0);
             /* sending ref_no */
+            log_f("ref no");
             send(arg->socks[i], &arg->ref_no, sizeof(int), 0);
+            log_f("msg");
             send(arg->socks[i], arg->msg, 200, 0);
       }
       pthread_mutex_unlock(&peer_mut);
+      log_f("returning notify_pth");
       return NULL;
 }
 
@@ -70,6 +84,7 @@ _Bool spread_msg(int* peers, int n_peers, int ref_no, char* msg){
 }
 
 _Bool spread_thread_notif(int* peers, int n_peers, int ref_no, char* label){
+      log_f("spread_thread_notif called");
       struct notif_arg arg;
       arg.socks = peers;
       arg.n_peers = n_peers;
@@ -82,6 +97,7 @@ _Bool spread_thread_notif(int* peers, int n_peers, int ref_no, char* label){
 
       pthread_t pth;
       pthread_create(&pth, NULL, &notify_pth, &arg);
+      log_f("about to join");
       return !pthread_join(pth, NULL);
 }
 
@@ -89,7 +105,11 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg){
       switch(mb_type){
             case MSG_CREATE_THREAD:
                   puts("thread created");
-                  spread_thread_notif(peers, n_peers, ref_no, str_arg);
+                  log_f("thread created with string:");
+                  log_f(str_arg);
+                  log_f("end_str");
+                  // spread_thread_notif(peers, n_peers, ref_no, str_arg);
+                  spread_thread_notif(peers, n_peers, u_ref_no++, str_arg);
                   break;
             case MSG_REMOVE_THREAD:
                   /* only she who created a thread can delete it */

@@ -10,13 +10,16 @@
 #include "client.h"
 #include "shared.h"
 
+struct thread_lst* cur_thread;
+
 struct th_hash_lst init_th_hash_lst(int buckets){
       struct th_hash_lst thl;
       thl.n = 0;
       thl.bux = buckets;
 
       thl.threads = calloc(thl.bux, sizeof(struct thread_lst));
-      thl.in_use = malloc(sizeof(int)*thl.bux);
+      thl.in_use = malloc(sizeof(int)*(thl.bux+1));
+      memset(thl.in_use, -1, sizeof(int)*(thl.bux+1));
 
       /*
        *pthread_t pth;
@@ -32,7 +35,7 @@ struct th_hash_lst init_th_hash_lst(int buckets){
 struct thread_lst* thread_lookup(struct th_hash_lst thl, char* th_name, int ref_no){
       if(!th_name){
             for(int i = 0; thl.in_use[i] != -1; ++i){
-                  for(struct thread_lst* cur = thl.threads[thl.in_use[i]]; cur->next;
+                  for(struct thread_lst* cur = thl.threads[thl.in_use[i]]; cur;
                       cur = cur->next){
                         if(cur->ref_no == ref_no)return cur;
                   }
@@ -113,9 +116,12 @@ void* read_notif_pth(void* rnp_arg_v){
             memset(buf, 0, 201);
             /* reading MSGTYPE */
             read(rnp_arg->sock, &msg_type, sizeof(int));
+            printf("read msg type %i\n", msg_type);
             /* reading ref no */
             read(rnp_arg->sock, &ref_no, sizeof(int));
+            printf("read ref_no: %i\n", ref_no);
             read(rnp_arg->sock, buf, 200);
+            printf("DEBUG: string: \"%s\" read from buf\n", buf);
 
             /* if we've received a msgtype_notif, add thread */
             if(msg_type == MSGTYPE_NOTIF)
@@ -162,8 +168,54 @@ int reply_thread(int th_ref_no, char* msg, int sock){
       return send_mb_r(mb_a, sock);
 }
 
+void* repl_pth(void* rnp_arg_v){
+      struct read_notif_pth_arg* rnp_arg = (struct read_notif_pth_arg*)rnp_arg_v;
+
+      char* inp = NULL, * tmp_p;
+      size_t sz = 0;
+      int b_read;
+
+      while((b_read = getline(&inp, &sz, stdin)) != EOF){
+            inp[--b_read] = 0;
+            if(*inp == '/' && b_read > 1){
+                  switch(inp[1]){
+                        case 't':
+                              /* TODO: error handling */
+                              cur_thread = thread_lookup(*rnp_arg->thl, (tmp_p = strchr(inp, ' ')+1), -1);
+                              if(!cur_thread)printf("no thread containing \"%s\" was found\n", tmp_p);
+                              else printf("current thread has been switched to \"%s\"\n", cur_thread->label);
+                              break;
+                              /* switch threads */
+                        case 'c':
+                              if((tmp_p = strchr(inp, ' '))){
+                                    create_thread(tmp_p+1, rnp_arg->sock);
+                                    printf("thread with name \"%s\" has been created\n", tmp_p+1);
+                              }
+                              break;
+                        case 'l':
+                              for(int i = 0; rnp_arg->thl->in_use[i] != -1; ++i){
+                                    for(struct thread_lst* tl = rnp_arg->thl->threads[rnp_arg->thl->in_use[i]]; tl; tl = tl->next){
+                                          printf("%i: %s\n", i, tl->label);
+                                    }
+                              }
+                              break;
+                  }
+            }
+            /* we're sending a regular message */
+            else if(!cur_thread)
+                  puts("you must first enter a thread before replying");
+            else
+                  reply_thread(cur_thread->ref_no, inp, rnp_arg->sock);
+      }
+      return NULL;
+}
+
 _Bool client(char* sock_path){
+      cur_thread = NULL;
       int sock = listen_sock();
+
+      // host sometimes seg faults, write to logfile to debug
+      listen(sock, 0);
       struct sockaddr_un r_addr;
       memset(&r_addr, 0, sizeof(struct sockaddr_un));
       r_addr.sun_family = AF_UNIX;
@@ -178,37 +230,19 @@ _Bool client(char* sock_path){
       rnpa.sock = sock;
       rnpa.thl = &thl;
 
-      pthread_t read_notif_pth_pth;
+      pthread_t read_notif_pth_pth, repl_pth_pth;
+      /* TODO: fix possible synch issues from sharing rnpa.thl */
       pthread_create(&read_notif_pth_pth, NULL, &read_notif_pth, &rnpa);
+      pthread_create(&repl_pth_pth, NULL, &repl_pth, &rnpa);
 
-      // int cur_thread = -1;
-      struct thread_lst* cur_thread = NULL;
-
-      char* inp = NULL, * tmp_p;
-      size_t sz = 0;
-      int b_read;
+      char* tmp_p;
 
       while(1){
-            if((tmp_p = pop_msg_stack(cur_thread)))puts(tmp_p);
+            // TODO: sender info should be recvd
+            // pop_msg_stack
+            if(cur_thread && (tmp_p = pop_msg_stack(cur_thread)))puts(tmp_p);
             usleep(1000);
       }
 
       // this must be in separate thread
-      while((b_read = getline(&inp, &sz, stdin)) != EOF){
-            inp[--b_read] = 0;
-            if(*inp == '/' && b_read > 1){
-                  switch(inp[1]){
-                        case 't':
-                              /* TODO: error handlign */
-                              cur_thread = thread_lookup(thl, strchr(inp, ' ')+1, -1);
-                              break;
-                              /* switch threads */
-                        case 'c':
-                              if((tmp_p = strchr(inp, ' ')))
-                                    create_thread(tmp_p+1, sock);
-                              break;
-                  }
-            }
-      }
-      return 1;
 }
