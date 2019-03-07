@@ -14,10 +14,14 @@
 int u_ref_no = 0;
 
 void log_f(char* msg){
+      #ifndef ASH_DEBUG
       FILE* fp = fopen("LOGFILE", "a");
       fputs(msg, fp);
       fputc('\n', fp);
       fclose(fp);
+      return;
+      #endif
+      puts(msg);
 }
 
 /* TODO: throw this in a struct */
@@ -152,11 +156,13 @@ void create_mb(char* name){
             printf("mb: \"%s\" already exists\n", name);
             return;
       }
+      #ifndef ASH_DEBUG
       pid_t pid = fork();
       if(pid > 0){
             printf("mb spawned at pid: %i\n", pid);
             exit(EXIT_SUCCESS);
       }
+      #endif
       int sock = listen_sock();
       if(sock == -1)return;
 
