@@ -116,12 +116,18 @@ void* read_notif_pth(void* rnp_arg_v){
             memset(buf, 0, 201);
             /* reading MSGTYPE */
             read(rnp_arg->sock, &msg_type, sizeof(int));
+            #ifdef ASH_DEBUG
             printf("read msg type %i\n", msg_type);
+            #endif
             /* reading ref no */
             read(rnp_arg->sock, &ref_no, sizeof(int));
+            #ifdef ASH_DEBUG
             printf("read ref_no: %i\n", ref_no);
+            #endif
             read(rnp_arg->sock, buf, 200);
-            printf("DEBUG: string: \"%s\" read from buf\n", buf);
+            #ifdef ASH_DEBUG
+            printf("string: \"%s\" read from buf\n", buf);
+            #endif
 
             /* if we've received a msgtype_notif, add thread */
             if(msg_type == MSGTYPE_NOTIF)
@@ -144,8 +150,11 @@ void* read_notif_pth(void* rnp_arg_v){
 
 int send_mb_r(struct mb_msg mb_a, int sock){
       int ret = 1;
-      ret &= send(sock, mb_a.mb_inf, sizeof(int)*2, 0);
-      ret &= send(sock, mb_a.str_arg, 200, 0);
+      #ifdef ASH_DEBUG
+      printf("sending: %i %i %s\n", mb_a.mb_inf[0], mb_a.mb_inf[1], mb_a.str_arg);
+      #endif
+      ret &= send(sock, mb_a.mb_inf, sizeof(int)*2, 0) != -1;
+      ret &= send(sock, mb_a.str_arg, 200, 0) != -1;
       return ret;
 }
 
@@ -188,7 +197,10 @@ void* repl_pth(void* rnp_arg_v){
                               /* switch threads */
                         case 'c':
                               if((tmp_p = strchr(inp, ' '))){
-                                    create_thread(tmp_p+1, rnp_arg->sock);
+                                    #ifdef ASH_DEBUG
+                                    printf("reval of create thread: %i\n", create_thread(tmp_p+1, rnp_arg->sock));
+                                    printf("sent to socket: %i\n", rnp_arg->sock);
+                                    #endif
                                     printf("thread with name \"%s\" has been created\n", tmp_p+1);
                               }
                               break;
@@ -245,6 +257,4 @@ _Bool client(char* sock_path){
             if(cur_thread && (tmp_p = pop_msg_stack(cur_thread)))puts(tmp_p);
             usleep(1000);
       }
-
-      // this must be in separate thread
 }

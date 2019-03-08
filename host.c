@@ -24,6 +24,12 @@ void log_f(char* msg){
       puts(msg);
 }
 
+void log_f_int(int i){
+      char num[20] = {0};
+      sprintf(num, "%i", i);
+      log_f(num);
+}
+
 /* TODO: throw this in a struct */
 int* peers, n_peers, peer_cap;
 pthread_mutex_t peer_mut;
@@ -108,7 +114,6 @@ _Bool spread_thread_notif(int* peers, int n_peers, int ref_no, char* label){
 _Bool mb_handler(int mb_type, int ref_no, char* str_arg){
       switch(mb_type){
             case MSG_CREATE_THREAD:
-                  puts("thread created");
                   log_f("thread created with string:");
                   log_f(str_arg);
                   log_f("end_str");
@@ -117,11 +122,13 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg){
                   break;
             case MSG_REMOVE_THREAD:
                   /* only she who created a thread can delete it */
-                  printf("thread %i removed\n", ref_no);
+                  log_f("thread with following number removed");
+                  log_f_int(ref_no);
                   break;
             default: return 0;
       }
-      printf("str arg: %s recvd\n", str_arg);
+      log_f("the following str_arg was recvd");
+      log_f(str_arg);
       return 1;
 }
 
@@ -131,6 +138,20 @@ void init_host(){
       peers = malloc(sizeof(int)*peer_cap);
       /* TODO: destroy this */
       pthread_mutex_init(&peer_mut, NULL);
+}
+
+void* read_cl_pth(void* peer_sock_v){
+      int peer_sock = *((int*)peer_sock_v);
+      int mb_inf[2] = {-1, -1}; char str_buf[201];
+
+      while(1){
+            memset(str_buf, 0, 201);
+            read(peer_sock, mb_inf, sizeof(int)*2);
+            read(peer_sock, str_buf, 200);
+
+            mb_handler(mb_inf[0], mb_inf[1], str_buf);
+      }
+      return NULL;
 }
 
 void add_host(int sock){
@@ -143,18 +164,28 @@ void add_host(int sock){
             peers = tmp_peers;
       }
       peers[n_peers++] = sock;
+
+      pthread_t read_cl_pth_pth;
+      pthread_create(&read_cl_pth_pth, NULL, &read_cl_pth, &sock);
+      pthread_detach(read_cl_pth_pth);
+
       pthread_mutex_unlock(&peer_mut);
 }
 
+void* add_host_pth(void* local_sock_v){
+      int sock = *((int*)local_sock_v);
+      while(1)add_host(accept(sock, NULL, NULL));
+}
+
 /* creates an mb in the working directory */
-void create_mb(char* name){
+_Bool create_mb(char* name){
       /* checking for existence of socket */
       struct stat st;
       memset(&st, 0, sizeof(struct stat));
       stat(name, &st);
       if(st.st_ino != 0){
             printf("mb: \"%s\" already exists\n", name);
-            return;
+            return 0;
       }
       #ifndef ASH_DEBUG
       pid_t pid = fork();
@@ -164,7 +195,7 @@ void create_mb(char* name){
       }
       #endif
       int sock = listen_sock();
-      if(sock == -1)return;
+      if(sock == -1)return 0;
 
       struct sockaddr_un addr;
       memset(&addr, 0, sizeof(struct sockaddr_un));
@@ -172,21 +203,16 @@ void create_mb(char* name){
       strncpy(addr.sun_path, name, sizeof(addr.sun_path));
 
       if(bind(sock, (struct sockaddr*)&addr, SUN_LEN(&addr)) == -1
-      || listen(sock, 0) == -1)return;
-
-      int peer_sock = -1;
-      /* recvd info */
-      /* str_buf contains up to 200 chars */
-      int mb_inf[2] = {-1, -1}; char str_buf[201];
+      || listen(sock, 0) == -1)return 0;
       
       init_host();
-      
-      while(1){
-            memset(str_buf, 0, 201);
-            add_host(peer_sock = accept(sock, NULL, NULL));
-            read(peer_sock, mb_inf, sizeof(int)*2);
-            read(peer_sock, str_buf, 200);
+      /* TODO: find way to safely detach/stop thread */
+      pthread_t add_host_pth_pth;
+      pthread_create(&add_host_pth_pth, NULL, &add_host_pth, &sock);
 
-            mb_handler(mb_inf[0], mb_inf[1], str_buf);
-      }
+      /* this will keep host waiting indefinitely */
+      pthread_join(add_host_pth_pth, NULL);
+      // pthread_detach(add_host_pth_pth);
+      
+      return 1;
 }
