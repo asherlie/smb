@@ -206,9 +206,8 @@ void* repl_pth(void* rnp_arg_v){
                               break;
                         case 'l':
                               for(int i = 0; rnp_arg->thl->in_use[i] != -1; ++i){
-                                    for(struct thread_lst* tl = rnp_arg->thl->threads[rnp_arg->thl->in_use[i]]; tl; tl = tl->next){
-                                          printf("%i: %s\n", i, tl->label);
-                                    }
+                                    for(struct thread_lst* tl = rnp_arg->thl->threads[rnp_arg->thl->in_use[i]]; tl; tl = tl->next)
+                                          printf("%i: %s\n", tl->ref_no, tl->label);
                               }
                               break;
                   }

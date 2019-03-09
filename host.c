@@ -87,6 +87,8 @@ _Bool spread_msg(int* peers, int n_peers, int ref_no, char* msg){
        * 200 empty bytes will be sent
        */
       if(arg.msg_buf)strncpy(arg.msg, msg, 200);
+      log_f("spread_msg is about to send: ");
+      log_f(msg);
 
       pthread_t pth;
       pthread_create(&pth, NULL, &notify_pth, &arg);
@@ -125,6 +127,9 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg){
                   log_f("thread with following number removed");
                   log_f_int(ref_no);
                   break;
+            case MSG_REPLY_THREAD:
+                  spread_msg(peers, n_peers, ref_no, str_arg);
+                  break;
             default: return 0;
       }
       log_f("the following str_arg was recvd");
@@ -146,9 +151,14 @@ void* read_cl_pth(void* peer_sock_v){
 
       while(1){
             memset(str_buf, 0, 201);
-            read(peer_sock, mb_inf, sizeof(int)*2);
-            read(peer_sock, str_buf, 200);
+            if(read(peer_sock, mb_inf, sizeof(int)*2) <= 0)break;
+            if(read(peer_sock, str_buf, 200) <= 0)break;
 
+            log_f("read mb_inf: ");
+            log_f_int(mb_inf[0]);
+            log_f_int(mb_inf[1]);
+            log_f("read str_buf: ");
+            log_f(str_buf);
             mb_handler(mb_inf[0], mb_inf[1], str_buf);
       }
       return NULL;
