@@ -50,7 +50,7 @@ struct thread_lst* thread_lookup(struct th_hash_lst thl, char* th_name, int ref_
 }
 
 /* return existence of ref_no */
-_Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name){
+_Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name, uid_t creator){
       /* int ind = ref_no % thl->bux; */
       /* TODO: should more chars be summed for hashing */
       // TODO: ref_no should be used for hashing because the most
@@ -64,6 +64,7 @@ _Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name){
       else
             /* TODO: DON'T ITERATE THROUGH EVERYTHING - KEEP A PTR TO LAST */
             for(cur = thl->threads[ind]; cur; cur = cur->next)if(cur->ref_no == ref_no)return 1;
+      cur->creator = creator;
       cur->ref_no = ref_no;
       strncpy(cur->label, name, sizeof(cur->label)-1);
 
@@ -73,6 +74,7 @@ _Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name){
       cur->msg_stack_cap = 50;
       /* TODO: free */
       cur->msg_stack = malloc(sizeof(struct msg_stack_entry)*cur->msg_stack_cap);
+      cur->msg_stack_base = cur->msg_stack;
       /* TODO: destroy this */
       pthread_mutex_init(&cur->thread_msg_stack_lck, NULL);
 
@@ -86,10 +88,11 @@ _Bool insert_msg_msg_stack(struct thread_lst* th, char* msg, uid_t sender){
       pthread_mutex_lock(&th->thread_msg_stack_lck);
       if(th->n_msg == th->msg_stack_cap){
             resz = 1;
+            th->msg_stack_cap *= 2;
             struct msg_stack_entry* tmp = malloc(sizeof(struct msg_stack_entry)*th->msg_stack_cap);
             memcpy(tmp, th->msg_stack, sizeof(struct msg_stack_entry)*th->n_msg);
-            free(th->msg_stack);
-            th->msg_stack = tmp;
+            free(th->msg_stack_base);
+            th->msg_stack_base = th->msg_stack = tmp;
       }
 
       struct msg_stack_entry tmp_entry;
@@ -109,8 +112,14 @@ _Bool pop_msg_stack(struct thread_lst* th, char* msg, uid_t* sender){
       _Bool ret = 0;
       pthread_mutex_lock(&th->thread_msg_stack_lck);
       if(th->n_msg){
-            *sender = th->msg_stack[--th->n_msg].sender;
-            strncpy(msg, th->msg_stack[th->n_msg].msg, 200);
+            /* msg_stack is no longer a stack
+             * TODO: change name to *_msg_queue
+             * *sender = th->msg_stack[--th->n_msg].sender;
+             * strncpy(msg, th->msg_stack[th->n_msg].msg, 200);
+             */
+            *sender = (*th->msg_stack).sender;
+            strncpy(msg, (*th->msg_stack).msg, 200);
+            ++th->msg_stack; ++th->msg_stack_cap; --th->n_msg;
             ret = 1;
       }
       pthread_mutex_unlock(&th->thread_msg_stack_lck);
@@ -149,7 +158,7 @@ void* read_notif_pth(void* rnp_arg_v){
 
             /* if we've received a msgtype_notif, add thread */
             if(msg_type == MSGTYPE_NOTIF){
-                  add_thread_thl(rnp_arg->thl, ref_no, buf);
+                  add_thread_thl(rnp_arg->thl, ref_no, buf, uid);
                   printf("%s%i%s: %s[THREAD_CREATE %s]%s\n", ANSI_GRE, uid, ANSI_NON, ANSI_RED, buf, ANSI_NON);
             }
             /* as of now, only other msg_type is MSGTYPE_MSG */
@@ -209,6 +218,8 @@ void* repl_pth(void* rnp_arg_v){
             inp[--b_read] = 0;
             if(*inp == '/' && b_read > 1){
                   switch(inp[1]){
+                        /* both /join and /thread will join an existing thread */
+                        case 'j':
                         case 't':
                               /* TODO: error handling */
                               cur_thread = thread_lookup(*rnp_arg->thl, (tmp_p = strchr(inp, ' ')+1), -1);
@@ -232,14 +243,20 @@ void* repl_pth(void* rnp_arg_v){
                         case 'l':
                               for(int i = 0; rnp_arg->thl->in_use[i] != -1; ++i){
                                     for(struct thread_lst* tl = rnp_arg->thl->threads[rnp_arg->thl->in_use[i]]; tl; tl = tl->next)
-                                          printf("%i: %s\n", tl->ref_no, tl->label);
+                                          printf("%i: %s\n", tl->creator, tl->label);
                               }
+                              break;
+                        case 'w':
+                              if(!cur_thread)
+                                    printf("%syou have not yet joined a thread%s\n", ANSI_MGNTA, ANSI_NON);
+                              else 
+                                    printf("%scurrent thread is \"%s\"%s\n", ANSI_MGNTA, cur_thread->label, ANSI_NON);
                               break;
                   }
             }
             /* we're sending a regular message */
             else if(!cur_thread)
-                  puts("you must first enter a thread before replying");
+                  printf("%syou must first enter a thread before replying%s\n", ANSI_RED, ANSI_NON);
             else
                   reply_thread(cur_thread->ref_no, inp, rnp_arg->sock);
       }

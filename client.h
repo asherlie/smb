@@ -5,8 +5,14 @@ struct msg_stack_entry{
 
 /* hashed array of thread linked lists */
 struct thread_lst{
+      uid_t creator;
       int ref_no, n_msg, msg_stack_cap;
       char label[50];
+
+      /* base ptr is stored for reallocs since offset is changed 
+       * upon entry removal 
+       */
+      struct msg_stack_entry* msg_stack_base;
       struct msg_stack_entry* msg_stack;
 
       /* this THREAD reads notifications sent from host.c */
