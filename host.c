@@ -63,6 +63,7 @@ void* notify_pth(void* v_arg){
              * notification
              */
             log_f("sending credentials");
+            /* TODO: is this sending incorrect creds? */
             s_cred = get_peer_cred(arg->socks[i]);
             if(send(arg->socks[i], &s_cred, sizeof(uid_t), 0) <= 0){/* TODO */};
             /* MSGTYPE */

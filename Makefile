@@ -6,4 +6,4 @@ smb: $(CSRC)
 db: $(CSRC)
 	$(CC) $(CFLAGS) $(CSRC) -DASH_DEBUG -g -o db
 clean:
-	rm -f smb
+	rm -f smb db
