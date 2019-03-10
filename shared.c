@@ -6,5 +6,3 @@ int listen_sock(){
       int sock = socket(AF_UNIX, SOCK_STREAM, 0);
       return sock;
 }
-
-

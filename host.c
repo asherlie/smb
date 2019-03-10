@@ -16,8 +16,7 @@ int u_ref_no = 0;
 void log_f(char* msg){
       #ifndef ASH_DEBUG
       FILE* fp = fopen("LOGFILE", "a");
-      fputs(msg, fp);
-      fputc('\n', fp);
+      fprintf(fp, "%s%s%s\n", ANSI_RED, msg, ANSI_NON);
       fclose(fp);
       return;
       #endif

@@ -278,7 +278,7 @@ _Bool client(char* sock_path){
       while(1){
             // pop_msg_stack
             // if(cur_thread && (tmp_p = pop_msg_stack(cur_thread)))puts(tmp_p);
-            if(cur_thread && pop_msg_stack(cur_thread, tmp_p, &s_uid))printf("%i: %s\n", s_uid, tmp_p);
+            if(cur_thread && pop_msg_stack(cur_thread, tmp_p, &s_uid))printf("%s%i%s: %s\n", ANSI_GRE, s_uid, ANSI_NON, tmp_p);
             usleep(1000);
       }
 }
