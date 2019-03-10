@@ -72,7 +72,7 @@ _Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name){
       cur->n_msg = 0;
       cur->msg_stack_cap = 50;
       /* TODO: free */
-      cur->msg_stack = malloc(sizeof(char*)*cur->msg_stack_cap);
+      cur->msg_stack = malloc(sizeof(struct msg_stack_entry)*cur->msg_stack_cap);
       /* TODO: destroy this */
       pthread_mutex_init(&cur->thread_msg_stack_lck, NULL);
 
@@ -81,50 +81,68 @@ _Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name){
       return 0;
 }
 
-_Bool insert_msg_msg_stack(struct thread_lst* th, char* msg){
+_Bool insert_msg_msg_stack(struct thread_lst* th, char* msg, uid_t sender){
       _Bool resz = 0;
       pthread_mutex_lock(&th->thread_msg_stack_lck);
       if(th->n_msg == th->msg_stack_cap){
             resz = 1;
-            char** tmp = malloc(sizeof(char*)*th->msg_stack_cap);
-            memcpy(tmp, th->msg_stack, sizeof(char*)*th->n_msg);
+            struct msg_stack_entry* tmp = malloc(sizeof(struct msg_stack_entry)*th->msg_stack_cap);
+            memcpy(tmp, th->msg_stack, sizeof(struct msg_stack_entry)*th->n_msg);
             free(th->msg_stack);
             th->msg_stack = tmp;
       }
-      th->msg_stack[th->n_msg] = calloc(201, 1);
-      strncpy(th->msg_stack[th->n_msg++], msg, 200);
+
+      struct msg_stack_entry tmp_entry;
+      memset(tmp_entry.msg, 0, 201);
+      tmp_entry.sender = sender;
+      /* memcpy'ing because we want all 200 bytes
+       * this lets the user avoid clearing msg
+       */
+      memcpy(tmp_entry.msg, msg, 200);
+
+      th->msg_stack[th->n_msg++] = tmp_entry;
       pthread_mutex_unlock(&th->thread_msg_stack_lck);
       return resz;
 }
 
-char* pop_msg_stack(struct thread_lst* th){
-      char* ret = NULL;
+_Bool pop_msg_stack(struct thread_lst* th, char* msg, uid_t* sender){
+      _Bool ret = 0;
       pthread_mutex_lock(&th->thread_msg_stack_lck);
       if(th->n_msg){
-            ret = th->msg_stack[--th->n_msg];
+            *sender = th->msg_stack[--th->n_msg].sender;
+            strncpy(msg, th->msg_stack[th->n_msg].msg, 200);
+            ret = 1;
       }
       pthread_mutex_unlock(&th->thread_msg_stack_lck);
       return ret;
 }
 
+/* four reads are executed each iteration:
+ *    1: uid_t sender
+ *    2: int   msg_type
+ *    3: int   ref_no
+ *    4: char* buf
+ */
 void* read_notif_pth(void* rnp_arg_v){
       struct read_notif_pth_arg* rnp_arg = (struct read_notif_pth_arg*)rnp_arg_v;
-      int ref_no, msg_type;
+      int ref_no, msg_type; uid_t uid;
       char buf[201];
       struct thread_lst* cur_th = NULL;
       while(1){
             memset(buf, 0, 201);
+            /* reading uid_t of sender */
+            if(read(rnp_arg->sock, &uid, sizeof(uid_t)) <= 0)break;
             /* reading MSGTYPE */
-            read(rnp_arg->sock, &msg_type, sizeof(int));
+            if(read(rnp_arg->sock, &msg_type, sizeof(int)) <= 0)break;
             #ifdef ASH_DEBUG
             printf("read msg type %i\n", msg_type);
             #endif
             /* reading ref no */
-            read(rnp_arg->sock, &ref_no, sizeof(int));
+            if(read(rnp_arg->sock, &ref_no, sizeof(int)) <= 0)break;
             #ifdef ASH_DEBUG
             printf("read ref_no: %i\n", ref_no);
             #endif
-            read(rnp_arg->sock, buf, 200);
+            if(read(rnp_arg->sock, buf, 200) <= 0)break;
             #ifdef ASH_DEBUG
             printf("string: \"%s\" read from buf\n", buf);
             #endif
@@ -139,13 +157,14 @@ void* read_notif_pth(void* rnp_arg_v){
                   // this is the most frequent lookup
                   cur_th = thread_lookup(*rnp_arg->thl, NULL, ref_no);
                   /* adding message to msg stack */
-                  if(cur_th)insert_msg_msg_stack(cur_th, buf);
+                  if(cur_th)insert_msg_msg_stack(cur_th, buf, uid);
                   // just update ref_no's thread entry 
                   /* ref_no, string and uid_t must be returned to main thread
                    * to be checked cur_thread against and possibly printed
                    */
             }
       }
+      return NULL;
 }
 
 int send_mb_r(struct mb_msg mb_a, int sock){
@@ -230,7 +249,6 @@ _Bool client(char* sock_path){
       cur_thread = NULL;
       int sock = listen_sock();
 
-      // host sometimes seg faults, write to logfile to debug
       listen(sock, 0);
       struct sockaddr_un r_addr;
       memset(&r_addr, 0, sizeof(struct sockaddr_un));
@@ -253,12 +271,14 @@ _Bool client(char* sock_path){
       pthread_create(&read_notif_pth_pth, NULL, &read_notif_pth, &rnpa);
       pthread_create(&repl_pth_pth, NULL, &repl_pth, &rnpa);
 
-      char* tmp_p;
+      /* doesn't need to be memset(*, 0, *)'d - this is handled by insert_msg_msg_stack */
+      char tmp_p[201];
+      uid_t s_uid;
 
       while(1){
-            // TODO: sender info should be recvd
             // pop_msg_stack
-            if(cur_thread && (tmp_p = pop_msg_stack(cur_thread)))puts(tmp_p);
+            // if(cur_thread && (tmp_p = pop_msg_stack(cur_thread)))puts(tmp_p);
+            if(cur_thread && pop_msg_stack(cur_thread, tmp_p, &s_uid))printf("%i: %s\n", s_uid, tmp_p);
             usleep(1000);
       }
 }

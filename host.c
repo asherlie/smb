@@ -53,13 +53,19 @@ uid_t get_peer_cred(int p_sock){
 void* notify_pth(void* v_arg){
       log_f("notify_pth called");
       struct notif_arg* arg = (struct notif_arg*)v_arg;
+      uid_t s_cred;
+
       pthread_mutex_lock(&peer_mut);
+
       for(int i = 0; i < arg->n_peers; ++i){
             /* sends ref no, message contents
              * message contents will be NULL
              * if this is a thread creation
              * notification
              */
+            log_f("sending credentials");
+            s_cred = get_peer_cred(arg->socks[i]);
+            send(arg->socks[i], &s_cred, sizeof(uid_t), 0);
             /* MSGTYPE */
             log_f("sending msgtype");
             send(arg->socks[i], &arg->msg_type, sizeof(int), 0);

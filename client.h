@@ -1,7 +1,13 @@
+struct msg_stack_entry{
+      char msg[201];
+      uid_t sender;
+};
+
 /* hashed array of thread linked lists */
 struct thread_lst{
       int ref_no, n_msg, msg_stack_cap;
-      char label[50], ** msg_stack;
+      char label[50];
+      struct msg_stack_entry* msg_stack;
 
       /* this THREAD reads notifications sent from host.c */
       // don't need this thread here - just need one to read
