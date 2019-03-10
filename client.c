@@ -148,8 +148,10 @@ void* read_notif_pth(void* rnp_arg_v){
             #endif
 
             /* if we've received a msgtype_notif, add thread */
-            if(msg_type == MSGTYPE_NOTIF)
+            if(msg_type == MSGTYPE_NOTIF){
                   add_thread_thl(rnp_arg->thl, ref_no, buf);
+                  printf("%s%i%s: %s[THREAD_CREATE %s]%s\n", ANSI_GRE, uid, ANSI_NON, ANSI_RED, buf, ANSI_NON);
+            }
             /* as of now, only other msg_type is MSGTYPE_MSG */
             else{
                   // TODO: thread lookup is too slow without label
@@ -210,8 +212,8 @@ void* repl_pth(void* rnp_arg_v){
                         case 't':
                               /* TODO: error handling */
                               cur_thread = thread_lookup(*rnp_arg->thl, (tmp_p = strchr(inp, ' ')+1), -1);
-                              if(!cur_thread)printf("no thread containing \"%s\" was found\n", tmp_p);
-                              else printf("current thread has been switched to \"%s\"\n", cur_thread->label);
+                              if(!cur_thread)printf("%sno thread containing \"%s\" was found%s\n", ANSI_RED, tmp_p, ANSI_NON);
+                              else printf("%scurrent thread has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_thread->label, ANSI_NON);
                               break;
                               /* switch threads */
                         case 'c':
@@ -220,10 +222,9 @@ void* repl_pth(void* rnp_arg_v){
                                      * possibly don't print this here, like with messages
                                      * user should only be alerted when the confirmation comes back from read_notif_pth()
                                      */
-                                    if((tmp_ret = create_thread(tmp_p+1, rnp_arg->sock)))
-                                          printf("thread with name \"%s\" has been created\n", tmp_p+1);
+                                    if((tmp_ret = create_thread(tmp_p+1, rnp_arg->sock))){/* TODO */}
                                     #ifdef ASH_DEBUG
-                                    printf("reval of create thread: %i\n", tmp_ret);
+                                    printf("ret val of create thread: %i\n", tmp_ret);
                                     printf("sent to socket: %i\n", rnp_arg->sock);
                                     #endif
                               }

@@ -64,15 +64,15 @@ void* notify_pth(void* v_arg){
              */
             log_f("sending credentials");
             s_cred = get_peer_cred(arg->socks[i]);
-            send(arg->socks[i], &s_cred, sizeof(uid_t), 0);
+            if(send(arg->socks[i], &s_cred, sizeof(uid_t), 0) <= 0){/* TODO */};
             /* MSGTYPE */
             log_f("sending msgtype");
-            send(arg->socks[i], &arg->msg_type, sizeof(int), 0);
+            if(send(arg->socks[i], &arg->msg_type, sizeof(int), 0) <= 0){/* TODO */};
             /* sending ref_no */
             log_f("ref no");
-            send(arg->socks[i], &arg->ref_no, sizeof(int), 0);
+            if(send(arg->socks[i], &arg->ref_no, sizeof(int), 0) <= 0){/* TODO */};
             log_f("msg");
-            send(arg->socks[i], arg->msg, 200, 0);
+            if(send(arg->socks[i], arg->msg, 200, 0) <= 0){/* TODO */};
       }
       pthread_mutex_unlock(&peer_mut);
       log_f("returning notify_pth");
@@ -222,6 +222,8 @@ _Bool create_mb(char* name){
 
       if(bind(sock, (struct sockaddr*)&addr, SUN_LEN(&addr)) == -1
       || listen(sock, 0) == -1)return 0;
+
+      chmod(addr.sun_path, 0777);
       
       init_host();
       /* TODO: find way to safely detach/stop thread */
