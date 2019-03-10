@@ -182,7 +182,7 @@ void* repl_pth(void* rnp_arg_v){
 
       char* inp = NULL, * tmp_p;
       size_t sz = 0;
-      int b_read;
+      int b_read, tmp_ret;
 
       while((b_read = getline(&inp, &sz, stdin)) != EOF){
             inp[--b_read] = 0;
@@ -197,11 +197,16 @@ void* repl_pth(void* rnp_arg_v){
                               /* switch threads */
                         case 'c':
                               if((tmp_p = strchr(inp, ' '))){
+                                    /* TODO:
+                                     * possibly don't print this here, like with messages
+                                     * user should only be alerted when the confirmation comes back from read_notif_pth()
+                                     */
+                                    if((tmp_ret = create_thread(tmp_p+1, rnp_arg->sock)))
+                                          printf("thread with name \"%s\" has been created\n", tmp_p+1);
                                     #ifdef ASH_DEBUG
-                                    printf("reval of create thread: %i\n", create_thread(tmp_p+1, rnp_arg->sock));
+                                    printf("reval of create thread: %i\n", tmp_ret);
                                     printf("sent to socket: %i\n", rnp_arg->sock);
                                     #endif
-                                    printf("thread with name \"%s\" has been created\n", tmp_p+1);
                               }
                               break;
                         case 'l':

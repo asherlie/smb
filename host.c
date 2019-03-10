@@ -176,7 +176,9 @@ void add_host(int sock){
       peers[n_peers++] = sock;
 
       pthread_t read_cl_pth_pth;
-      pthread_create(&read_cl_pth_pth, NULL, &read_cl_pth, &sock);
+      /* is this too hacky? should i just malloc some mem? */
+      /* this means that i need to guarantee peers doesn't have entries removed/rearranged */
+      pthread_create(&read_cl_pth_pth, NULL, &read_cl_pth, (peers+n_peers)-1);
       pthread_detach(read_cl_pth_pth);
 
       pthread_mutex_unlock(&peer_mut);
