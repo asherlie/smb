@@ -170,6 +170,7 @@ void* read_notif_pth(void* rnp_arg_v){
                    */
             }
       }
+      printf("%slost connection to board%s\n", ANSI_RED, ANSI_NON);
       return NULL;
 }
 
@@ -216,8 +217,8 @@ void* repl_pth(void* rnp_arg_v){
                         /* both /join and /thread will join an existing thread */
                         case 'j':
                         case 't':
-                              /* TODO: error handling */
-                              cur_thread = thread_lookup(*rnp_arg->thl, (tmp_p = strchr(inp, ' ')+1), -1);
+                              if(!(tmp_p = strchr(inp, ' ')))break;
+                              cur_thread = thread_lookup(*rnp_arg->thl, tmp_p+1, -1);
                               if(!cur_thread)printf("%sno thread containing \"%s\" was found%s\n", ANSI_RED, tmp_p, ANSI_NON);
                               else printf("%scurrent thread has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_thread->label, ANSI_NON);
                               break;
@@ -238,7 +239,7 @@ void* repl_pth(void* rnp_arg_v){
                         case 'l':
                               for(int i = 0; rnp_arg->thl->in_use[i] != -1; ++i){
                                     for(struct thread_lst* tl = rnp_arg->thl->threads[rnp_arg->thl->in_use[i]]; tl; tl = tl->next)
-                                          printf("%i: %s\n", tl->creator, tl->label);
+                                          printf("%i: \"%s\"\n", tl->creator, tl->label);
                               }
                               break;
                         case 'w':
@@ -246,6 +247,12 @@ void* repl_pth(void* rnp_arg_v){
                                     printf("%syou have not yet joined a thread%s\n", ANSI_MGNTA, ANSI_NON);
                               else 
                                     printf("%scurrent thread is \"%s\"%s\n", ANSI_MGNTA, cur_thread->label, ANSI_NON);
+                              break;
+                        /* exit or e[x]it */
+                        case 'e':
+                        case 'x':
+                              printf("%syou have left \"%s\"%s\n", ANSI_MGNTA, cur_thread->label, ANSI_NON);
+                              cur_thread = NULL;
                               break;
                   }
             }
