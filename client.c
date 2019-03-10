@@ -69,33 +69,33 @@ _Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name, uid_t crea
       strncpy(cur->label, name, sizeof(cur->label)-1);
 
       /* msg stack! */
-      /* TODO: this should be done in a separate init_msg_stack func */
+      /* TODO: this should be done in a separate init_msg_queue func */
       cur->n_msg = 0;
-      cur->msg_stack_cap = 50;
+      cur->msg_queue_cap = 50;
       /* TODO: free */
-      cur->msg_stack = malloc(sizeof(struct msg_stack_entry)*cur->msg_stack_cap);
-      cur->msg_stack_base = cur->msg_stack;
+      cur->msg_queue = malloc(sizeof(struct msg_queue_entry)*cur->msg_queue_cap);
+      cur->msg_queue_base = cur->msg_queue;
       /* TODO: destroy this */
-      pthread_mutex_init(&cur->thread_msg_stack_lck, NULL);
+      pthread_mutex_init(&cur->thread_msg_queue_lck, NULL);
 
       cur->next = NULL;
 
       return 0;
 }
 
-_Bool insert_msg_msg_stack(struct thread_lst* th, char* msg, uid_t sender){
+_Bool insert_msg_msg_queue(struct thread_lst* th, char* msg, uid_t sender){
       _Bool resz = 0;
-      pthread_mutex_lock(&th->thread_msg_stack_lck);
-      if(th->n_msg == th->msg_stack_cap){
+      pthread_mutex_lock(&th->thread_msg_queue_lck);
+      if(th->n_msg == th->msg_queue_cap){
             resz = 1;
-            th->msg_stack_cap *= 2;
-            struct msg_stack_entry* tmp = malloc(sizeof(struct msg_stack_entry)*th->msg_stack_cap);
-            memcpy(tmp, th->msg_stack, sizeof(struct msg_stack_entry)*th->n_msg);
-            free(th->msg_stack_base);
-            th->msg_stack_base = th->msg_stack = tmp;
+            th->msg_queue_cap *= 2;
+            struct msg_queue_entry* tmp = malloc(sizeof(struct msg_queue_entry)*th->msg_queue_cap);
+            memcpy(tmp, th->msg_queue, sizeof(struct msg_queue_entry)*th->n_msg);
+            free(th->msg_queue_base);
+            th->msg_queue_base = th->msg_queue = tmp;
       }
 
-      struct msg_stack_entry tmp_entry;
+      struct msg_queue_entry tmp_entry;
       memset(tmp_entry.msg, 0, 201);
       tmp_entry.sender = sender;
       /* memcpy'ing because we want all 200 bytes
@@ -103,26 +103,21 @@ _Bool insert_msg_msg_stack(struct thread_lst* th, char* msg, uid_t sender){
        */
       memcpy(tmp_entry.msg, msg, 200);
 
-      th->msg_stack[th->n_msg++] = tmp_entry;
-      pthread_mutex_unlock(&th->thread_msg_stack_lck);
+      th->msg_queue[th->n_msg++] = tmp_entry;
+      pthread_mutex_unlock(&th->thread_msg_queue_lck);
       return resz;
 }
 
-_Bool pop_msg_stack(struct thread_lst* th, char* msg, uid_t* sender){
+_Bool pop_msg_queue(struct thread_lst* th, char* msg, uid_t* sender){
       _Bool ret = 0;
-      pthread_mutex_lock(&th->thread_msg_stack_lck);
+      pthread_mutex_lock(&th->thread_msg_queue_lck);
       if(th->n_msg){
-            /* msg_stack is no longer a stack
-             * TODO: change name to *_msg_queue
-             * *sender = th->msg_stack[--th->n_msg].sender;
-             * strncpy(msg, th->msg_stack[th->n_msg].msg, 200);
-             */
-            *sender = (*th->msg_stack).sender;
-            strncpy(msg, (*th->msg_stack).msg, 200);
-            ++th->msg_stack; ++th->msg_stack_cap; --th->n_msg;
+            *sender = (*th->msg_queue).sender;
+            strncpy(msg, (*th->msg_queue).msg, 200);
+            ++th->msg_queue; ++th->msg_queue_cap; --th->n_msg;
             ret = 1;
       }
-      pthread_mutex_unlock(&th->thread_msg_stack_lck);
+      pthread_mutex_unlock(&th->thread_msg_queue_lck);
       return ret;
 }
 
@@ -168,7 +163,7 @@ void* read_notif_pth(void* rnp_arg_v){
                   // this is the most frequent lookup
                   cur_th = thread_lookup(*rnp_arg->thl, NULL, ref_no);
                   /* adding message to msg stack */
-                  if(cur_th)insert_msg_msg_stack(cur_th, buf, uid);
+                  if(cur_th)insert_msg_msg_queue(cur_th, buf, uid);
                   // just update ref_no's thread entry 
                   /* ref_no, string and uid_t must be returned to main thread
                    * to be checked cur_thread against and possibly printed
@@ -289,14 +284,14 @@ _Bool client(char* sock_path){
       pthread_create(&read_notif_pth_pth, NULL, &read_notif_pth, &rnpa);
       pthread_create(&repl_pth_pth, NULL, &repl_pth, &rnpa);
 
-      /* doesn't need to be memset(*, 0, *)'d - this is handled by insert_msg_msg_stack */
+      /* doesn't need to be memset(*, 0, *)'d - this is handled by insert_msg_msg_queue */
       char tmp_p[201];
       uid_t s_uid;
 
       while(1){
-            // pop_msg_stack
-            // if(cur_thread && (tmp_p = pop_msg_stack(cur_thread)))puts(tmp_p);
-            if(cur_thread && pop_msg_stack(cur_thread, tmp_p, &s_uid))printf("%s%i%s: %s\n", ANSI_GRE, s_uid, ANSI_NON, tmp_p);
+            // pop_msg_queue
+            // if(cur_thread && (tmp_p = pop_msg_queue(cur_thread)))puts(tmp_p);
+            if(cur_thread && pop_msg_queue(cur_thread, tmp_p, &s_uid))printf("%s%i%s: %s\n", ANSI_GRE, s_uid, ANSI_NON, tmp_p);
             usleep(1000);
       }
 }
