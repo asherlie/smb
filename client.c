@@ -91,8 +91,8 @@ _Bool insert_msg_msg_stack(struct thread_lst* th, char* msg){
             free(th->msg_stack);
             th->msg_stack = tmp;
       }
-      th->msg_stack[th->n_msg++] = calloc(201, 1);
-      strncpy(th->msg_stack[th->n_msg], msg, 200);
+      th->msg_stack[th->n_msg] = calloc(201, 1);
+      strncpy(th->msg_stack[th->n_msg++], msg, 200);
       pthread_mutex_unlock(&th->thread_msg_stack_lck);
       return resz;
 }

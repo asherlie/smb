@@ -149,7 +149,8 @@ void* read_cl_pth(void* peer_sock_v){
       int peer_sock = *((int*)peer_sock_v);
       int mb_inf[2] = {-1, -1}; char str_buf[201];
 
-      while(1){
+      /* TODO: zero peer array on exit */
+      while(peer_sock){
             memset(str_buf, 0, 201);
             if(read(peer_sock, mb_inf, sizeof(int)*2) <= 0)break;
             if(read(peer_sock, str_buf, 200) <= 0)break;
