@@ -1,4 +1,6 @@
 smb is a chatroom for multi-user systems
+chatrooms are spawned by ./smb -C and can contain arbitrarily many
+rooms, referred to as threads
 
 usage:
       ./smb -C [board_name] - creates a board with name [board_name]
