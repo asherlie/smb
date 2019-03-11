@@ -51,7 +51,7 @@ struct thread_lst* thread_lookup(struct th_hash_lst thl, char* th_name, int ref_
 }
 
 /* return existence of ref_no */
-_Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name, uid_t creator){
+struct thread_lst* add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name, uid_t creator){
       /* int ind = ref_no % thl->bux; */
       /* TODO: should more chars be summed for hashing */
       // TODO: ref_no should be used for hashing because the most
@@ -67,7 +67,7 @@ _Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name, uid_t crea
             /* we're stopping short so that cur is not always == NULL after this */
             struct thread_lst* tmp_cur;
             for(tmp_cur = thl->threads[ind]; tmp_cur->next; tmp_cur = tmp_cur->next)
-                  if(tmp_cur->ref_no == ref_no)return 1;
+                  if(tmp_cur->ref_no == ref_no)return NULL;
             cur = tmp_cur->next = malloc(sizeof(struct thread_lst));
       }
       cur->creator = creator;
@@ -86,7 +86,7 @@ _Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name, uid_t crea
 
       cur->next = NULL;
 
-      return 0;
+      return cur;
 }
 
 _Bool insert_msg_msg_queue(struct thread_lst* th, char* msg, uid_t sender){
@@ -168,11 +168,16 @@ void* read_notif_pth(void* rnp_arg_v){
                   // TODO: should ref_no be used to hash?
                   // this is the most frequent lookup
                   cur_th = thread_lookup(*rnp_arg->thl, NULL, ref_no);
+                  if(!cur_th){
+                        cur_th = add_thread_thl(rnp_arg->thl, ref_no, "{UNKNOWN_LABEL}", uid);
+                        printf("%s%i%s: %s[LEGACY_THREAD_CREATE {UNKNOWN_LABEL}]%s\n", ANSI_GRE, uid, ANSI_NON, ANSI_RED, ANSI_NON);
+                  }
                   /* adding message to msg stack */
-                  if(cur_th)insert_msg_msg_queue(cur_th, buf, uid);
+                  /* if the above code is being used, no need to check cur_th */
+                  // if(cur_th)insert_msg_msg_queue(cur_th, buf, uid);
+                  insert_msg_msg_queue(cur_th, buf, uid);
                   /* TODO: add thread with [unknown] label */
                   /* this will occur if thread's creation predates my joining */
-                  else{}
                   // just update ref_no's thread entry 
                   /* ref_no, string and uid_t must be returned to main thread
                    * to be checked cur_thread against and possibly printed
@@ -226,6 +231,7 @@ void* repl_pth(void* rnp_arg_v){
                         /* both /join and /thread will join an existing thread */
                         case 'j':
                         case 't':
+                              /* TODO: threads should be joinable by ref_no */
                               if(!(tmp_p = strchr(inp, ' ')))break;
                               cur_thread = thread_lookup(*rnp_arg->thl, tmp_p+1, -1);
                               if(!cur_thread)printf("%sno thread containing \"%s\" was found%s\n", ANSI_RED, tmp_p+1, ANSI_NON);
@@ -243,7 +249,7 @@ void* repl_pth(void* rnp_arg_v){
                         case 'l':
                               for(int i = 0; rnp_arg->thl->in_use[i] != -1; ++i){
                                     for(struct thread_lst* tl = rnp_arg->thl->threads[rnp_arg->thl->in_use[i]]; tl; tl = tl->next)
-                                          printf("%i: \"%s%s%s\"\n", tl->creator, (tl == cur_thread) ? ANSI_BLU : ANSI_NON, tl->label, ANSI_NON);
+                                          printf("%i: \"%s%s%s\"%i\n", tl->creator, (tl == cur_thread) ? ANSI_BLU : ANSI_NON, tl->label, ANSI_NON, tl->ref_no);
                               }
                               break;
                         case 'w':
