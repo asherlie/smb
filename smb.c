@@ -11,14 +11,6 @@
 
 /* 
  * smb
- * [s]ecure [m]essage [b]oard
- *
- *           or
- *
- * [s]erver [m]essage [b]oard
- *
- *           or
- *
  * [s]imple [m]essage [b]oard
  *
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
