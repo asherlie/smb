@@ -239,7 +239,7 @@ void* repl_pth(void* rnp_arg_v){
                         case 'l':
                               for(int i = 0; rnp_arg->thl->in_use[i] != -1; ++i){
                                     for(struct thread_lst* tl = rnp_arg->thl->threads[rnp_arg->thl->in_use[i]]; tl; tl = tl->next)
-                                          printf("%i: \"%s\"\n", tl->creator, tl->label);
+                                          printf("%i: \"%s%s%s\"\n", tl->creator, (tl == cur_thread) ? ANSI_BLU : ANSI_NON, tl->label, ANSI_NON);
                               }
                               break;
                         case 'w':
@@ -251,6 +251,7 @@ void* repl_pth(void* rnp_arg_v){
                         /* exit or e[x]it */
                         case 'e':
                         case 'x':
+                              if(!cur_thread)break;
                               printf("%syou have left \"%s\"%s\n", ANSI_MGNTA, cur_thread->label, ANSI_NON);
                               cur_thread = NULL;
                               break;
