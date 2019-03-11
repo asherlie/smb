@@ -48,6 +48,7 @@ uid_t get_peer_cred(int p_sock){
       return uid;
 }
 
+/* TODO: this doesn't need its own thread */
 /* arg->socks will be maintained in the host loop @ create_mb */
 void* notify_pth(void* v_arg){
       log_f("notify_pth called");
@@ -57,6 +58,7 @@ void* notify_pth(void* v_arg){
       pthread_mutex_lock(&peer_mut);
 
       for(int i = 0; i < arg->n_peers; ++i){
+            if(!arg->socks[i])continue;
             /* sends ref no, message contents
              * message contents will be NULL
              * if this is a thread creation
@@ -65,15 +67,27 @@ void* notify_pth(void* v_arg){
             log_f("sending credentials");
             /* TODO: is this sending incorrect creds? */
             s_cred = get_peer_cred(arg->socks[i]);
-            if(send(arg->socks[i], &s_cred, sizeof(uid_t), 0) <= 0){/* TODO */};
+            if(send(arg->socks[i], &s_cred, sizeof(uid_t), 0) <= 0){
+                  arg->socks[i] = 0;
+                  break;
+            }
             /* MSGTYPE */
             log_f("sending msgtype");
-            if(send(arg->socks[i], &arg->msg_type, sizeof(int), 0) <= 0){/* TODO */};
+            if(send(arg->socks[i], &arg->msg_type, sizeof(int), 0) <= 0){
+                  arg->socks[i] = 0;
+                  break;
+            }
             /* sending ref_no */
             log_f("ref no");
-            if(send(arg->socks[i], &arg->ref_no, sizeof(int), 0) <= 0){/* TODO */};
+            if(send(arg->socks[i], &arg->ref_no, sizeof(int), 0) <= 0){
+                  arg->socks[i] = 0;
+                  break;
+            }
             log_f("msg");
-            if(send(arg->socks[i], arg->msg, 200, 0) <= 0){/* TODO */};
+            if(send(arg->socks[i], arg->msg, 200, 0) <= 0){
+                  arg->socks[i] = 0;
+                  break;
+            }
       }
       pthread_mutex_unlock(&peer_mut);
       log_f("returning notify_pth");
@@ -113,6 +127,7 @@ _Bool spread_thread_notif(int* peers, int n_peers, int ref_no, char* label){
       /* only 50 chars are used */
       strncpy(arg.msg, label, 50);
 
+      /* TODO: this doesn't need to occur in a separate thread */
       pthread_t pth;
       pthread_create(&pth, NULL, &notify_pth, &arg);
       log_f("about to join");
@@ -152,14 +167,14 @@ void init_host(){
 }
 
 void* read_cl_pth(void* peer_sock_v){
-      int peer_sock = *((int*)peer_sock_v);
+      int* peer_sock = ((int*)peer_sock_v);
       int mb_inf[2] = {-1, -1}; char str_buf[201];
 
       /* TODO: zero peer array on exit */
-      while(peer_sock){
+      while(*peer_sock){
             memset(str_buf, 0, 201);
-            if(read(peer_sock, mb_inf, sizeof(int)*2) <= 0)break;
-            if(read(peer_sock, str_buf, 200) <= 0)break;
+            if(read(*peer_sock, mb_inf, sizeof(int)*2) <= 0)break;
+            if(read(*peer_sock, str_buf, 200) <= 0)break;
 
             log_f("read mb_inf: ");
             log_f_int(mb_inf[0]);
@@ -168,6 +183,13 @@ void* read_cl_pth(void* peer_sock_v){
             log_f(str_buf);
             mb_handler(mb_inf[0], mb_inf[1], str_buf);
       }
+      /* setting peers[x] to 0 to avoid resizing/rearranging indices
+       * of this array, since add_host uses offsets into peers as param
+       * for this function 
+       *
+       * peers[x] is checked in notify_pth
+       */
+      *peer_sock = 0;
       return NULL;
 }
 
