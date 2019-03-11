@@ -211,6 +211,29 @@ int reply_thread(int th_ref_no, char* msg, int sock){
       return send_mb_r(mb_a, sock);
 }
 
+void p_help(){
+      printf(
+            "[message]:\n"
+            "  sends message to current thread\n"
+            "/[h]elp:\n"
+            "  prints this information\n"
+            "/[j]oin   [thread_name]:\n"
+             "/[t]hread [thread_name]:\n" 
+             "  join thread with thread_name\n"
+             "/[n]ext:\n"
+             "  switch to next thread with same first char as current\n"
+             "/[c]reate [thread_name]:\n"
+             "  creates a thread with name thread_name\n"
+             "/[l]ist:\n"
+             "  lists all threads, current thread will be %sblue%s\n"
+             "/[w]hich:\n"
+             "  prints current thread name and reference number\n"
+             "/[e]xit:\n"
+             "/e[x]it:\n"
+             "  exits current thread\n"
+      , ANSI_BLU, ANSI_NON);
+}
+
 void* repl_pth(void* rnp_arg_v){
       struct read_notif_pth_arg* rnp_arg = (struct read_notif_pth_arg*)rnp_arg_v;
 
@@ -265,6 +288,9 @@ void* repl_pth(void* rnp_arg_v){
                               printf("%syou have left \"%s\"%s\n", ANSI_MGNTA, cur_thread->label, ANSI_NON);
                               cur_thread = NULL;
                               break;
+                        case 'h':
+                              p_help();
+                              break;
                   }
             }
             /* we're sending a regular message */
@@ -290,6 +316,9 @@ _Bool client(char* sock_path){
             printf("failed to connect to host \"%s\"\n", sock_path);
             return 0;
       }
+
+      printf("%swelcome to **%s%s%s** %s\n", ANSI_BLU, ANSI_MGNTA, sock_path, ANSI_BLU, ANSI_NON);
+      p_help();
 
       struct th_hash_lst thl = init_th_hash_lst(100);
 

@@ -33,11 +33,17 @@
  *
  */
 
+void p_usage(char* bname){
+      printf("usage:\n  %s -C [board_name] - creates a board with name [board_name]\n"
+                         "  %s [board_path]    - joins board at path [board_path]\n",
+      bname, bname);
+}
+
 
 /* TODO: is this more of a chatroom? */
 int main(int a, char** b){
       if(a == 1){
-            printf("usage: %s ... \n", *b);
+            p_usage(*b);
             return 1;
       }
       for(int i = 1; i < a-1; ++i){
