@@ -1,0 +1,33 @@
+smb is a chatroom for multi-user systems
+
+usage:
+      ./smb -C [board_name] - creates a board with name [board_name]
+      ./smb    [board_path] - joins board at path [board_path]
+
+client commands:
+
+      [message]:
+            sends message to current thread
+
+      /[h]elp:
+            prints this information
+
+      /[j]oin   [thread_name]:
+      /[t]hread [thread_name]:
+            join thread with thread_name
+
+      /[n]ext:
+            switch to next thread with same first char as current
+
+      /[c]reate [thread_name]:
+            creates a thread with name thread_name
+
+      /[l]ist:
+            lists all threads, current thread will be blue
+
+      /[w]hich:
+            prints current thread name and reference number
+
+      /[e]xit:
+      /e[x]it:
+            exits current thread
