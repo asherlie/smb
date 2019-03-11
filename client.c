@@ -176,12 +176,6 @@ void* read_notif_pth(void* rnp_arg_v){
                   /* if the above code is being used, no need to check cur_th */
                   // if(cur_th)insert_msg_msg_queue(cur_th, buf, uid);
                   insert_msg_msg_queue(cur_th, buf, uid);
-                  /* TODO: add thread with [unknown] label */
-                  /* this will occur if thread's creation predates my joining */
-                  // just update ref_no's thread entry 
-                  /* ref_no, string and uid_t must be returned to main thread
-                   * to be checked cur_thread against and possibly printed
-                   */
             }
       }
       printf("%slost connection to board%s\n", ANSI_RED, ANSI_NON);
@@ -238,6 +232,12 @@ void* repl_pth(void* rnp_arg_v){
                               else printf("%scurrent thread has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_thread->label, ANSI_NON);
                               break;
                               /* switch threads */
+                        /* go to next thread with same first character in label */
+                        case 'n':
+                              if(!cur_thread || !cur_thread->next)break;
+                              cur_thread = cur_thread->next;
+                              printf("%scurrent thread has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_thread->label, ANSI_NON);
+                              break;
                         case 'c':
                               if(!(tmp_p = strchr(inp, ' ')))break;
                               if((tmp_ret = create_thread(tmp_p+1, rnp_arg->sock))){/* TODO */}
@@ -249,7 +249,7 @@ void* repl_pth(void* rnp_arg_v){
                         case 'l':
                               for(int i = 0; rnp_arg->thl->in_use[i] != -1; ++i){
                                     for(struct thread_lst* tl = rnp_arg->thl->threads[rnp_arg->thl->in_use[i]]; tl; tl = tl->next)
-                                          printf("%i: \"%s%s%s\"%i\n", tl->creator, (tl == cur_thread) ? ANSI_BLU : ANSI_NON, tl->label, ANSI_NON, tl->ref_no);
+                                          printf("%i: \"%s%s%s\": %i\n", tl->creator, (tl == cur_thread) ? ANSI_BLU : ANSI_NON, tl->label, ANSI_NON, tl->ref_no);
                               }
                               break;
                         case 'w':
