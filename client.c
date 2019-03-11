@@ -45,7 +45,8 @@ struct thread_lst* thread_lookup(struct th_hash_lst thl, char* th_name, int ref_
       int ind = *th_name % thl.bux;
       if(!thl.threads[ind])return NULL;
       for(struct thread_lst* cur = thl.threads[ind]; cur; cur = cur->next)
-            if(strstr(thl.threads[ind]->label, th_name))return thl.threads[ind];
+            /* TODO: substrings in the middle of cur->label should be searchable */
+            if(strstr(cur->label, th_name))return cur;
       return NULL;
 }
 
@@ -61,14 +62,19 @@ _Bool add_thread_thl(struct th_hash_lst* thl, int ref_no, char* name, uid_t crea
             cur = thl->threads[ind] = malloc(sizeof(struct thread_lst));
             thl->in_use[thl->n++] = ind;
       }
-      else
+      else{
             /* TODO: DON'T ITERATE THROUGH EVERYTHING - KEEP A PTR TO LAST */
-            for(cur = thl->threads[ind]; cur; cur = cur->next)if(cur->ref_no == ref_no)return 1;
+            /* we're stopping short so that cur is not always == NULL after this */
+            struct thread_lst* tmp_cur;
+            for(tmp_cur = thl->threads[ind]; tmp_cur->next; tmp_cur = tmp_cur->next)
+                  if(tmp_cur->ref_no == ref_no)return 1;
+            cur = tmp_cur->next = malloc(sizeof(struct thread_lst));
+      }
       cur->creator = creator;
       cur->ref_no = ref_no;
       strncpy(cur->label, name, sizeof(cur->label)-1);
 
-      /* msg stack! */
+      /* msg queue! */
       /* TODO: this should be done in a separate init_msg_queue func */
       cur->n_msg = 0;
       cur->msg_queue_cap = 50;
@@ -164,6 +170,9 @@ void* read_notif_pth(void* rnp_arg_v){
                   cur_th = thread_lookup(*rnp_arg->thl, NULL, ref_no);
                   /* adding message to msg stack */
                   if(cur_th)insert_msg_msg_queue(cur_th, buf, uid);
+                  /* TODO: add thread with [unknown] label */
+                  /* this will occur if thread's creation predates my joining */
+                  else{}
                   // just update ref_no's thread entry 
                   /* ref_no, string and uid_t must be returned to main thread
                    * to be checked cur_thread against and possibly printed
@@ -219,22 +228,17 @@ void* repl_pth(void* rnp_arg_v){
                         case 't':
                               if(!(tmp_p = strchr(inp, ' ')))break;
                               cur_thread = thread_lookup(*rnp_arg->thl, tmp_p+1, -1);
-                              if(!cur_thread)printf("%sno thread containing \"%s\" was found%s\n", ANSI_RED, tmp_p, ANSI_NON);
+                              if(!cur_thread)printf("%sno thread containing \"%s\" was found%s\n", ANSI_RED, tmp_p+1, ANSI_NON);
                               else printf("%scurrent thread has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_thread->label, ANSI_NON);
                               break;
                               /* switch threads */
                         case 'c':
-                              if((tmp_p = strchr(inp, ' '))){
-                                    /* TODO:
-                                     * possibly don't print this here, like with messages
-                                     * user should only be alerted when the confirmation comes back from read_notif_pth()
-                                     */
-                                    if((tmp_ret = create_thread(tmp_p+1, rnp_arg->sock))){/* TODO */}
-                                    #ifdef ASH_DEBUG
-                                    printf("ret val of create thread: %i\n", tmp_ret);
-                                    printf("sent to socket: %i\n", rnp_arg->sock);
-                                    #endif
-                              }
+                              if(!(tmp_p = strchr(inp, ' ')))break;
+                              if((tmp_ret = create_thread(tmp_p+1, rnp_arg->sock))){/* TODO */}
+                              #ifdef ASH_DEBUG
+                              printf("ret val of create thread: %i\n", tmp_ret);
+                              printf("sent to socket: %i\n", rnp_arg->sock);
+                              #endif
                               break;
                         case 'l':
                               for(int i = 0; rnp_arg->thl->in_use[i] != -1; ++i){
