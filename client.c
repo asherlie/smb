@@ -101,10 +101,10 @@ _Bool rename_room_rml(struct rm_hash_lst rml, int ref_no, char* new_name){
             // in_use must be adjusted
             for(int i = 0; rml.in_use[i] != -1; ++i){
                   if(rml.in_use[i] == bucket){
+                        #ifdef ASH_DEBUG
                         printf("moving rml.in_use[%i], rml.in_use[%i], %i)\n", i, i+1, rml.bux-i-1);
-                        // memmove(&rml.in_use[i], &rml.in_use[i+1], (--rml.n)-i-1);
-                        memmove(rml.in_use+i, rml.in_use+i+1, rml.bux-i-1);
-                        --rml.n;
+                        #endif
+                        memmove(rml.in_use+i, rml.in_use+i+1, --rml.n-i);
                         break;
                   }
             }

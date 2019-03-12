@@ -206,8 +206,7 @@ _Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, struct rname_u
       pthread_t pth;
       pthread_create(&pth, NULL, &notify_pth, &arg);
       _Bool ret = !pthread_join(pth, NULL);
-      memmove();
-      --ruc.n;
+      memmove(ruc.sp+i, ruc.sp+i+1, --ruc.n-i);
       return ret;
 }
 
