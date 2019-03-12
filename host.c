@@ -29,9 +29,14 @@ void log_f_int(int i){
       log_f(num);
 }
 
+/* TODO: take these out of global space */
+
 /* TODO: throw this in a struct */
 int* peers, n_peers, peer_cap;
 pthread_mutex_t peer_mut;
+
+/* used to keep track of name update requests */
+struct rname_up_cont ruc;
 
 uid_t get_peer_cred(int p_sock){
       uid_t uid;
@@ -134,9 +139,77 @@ _Bool spread_thread_notif(int* peers, int n_peers, int ref_no, char* label){
       return !pthread_join(pth, NULL);
 }
 
+_Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock){
+      log_f("pass_rname_up_req called");
+      struct notif_arg arg;
+      /*
+       * *socks should be first nonzero sock that isn't requester 
+       * socks are added sequentially
+       */
+      _Bool success = 0;
+      for(int i = 0; i < n_peers; ++i){
+            if(peers[i] && peers[i] != sender_sock){
+                  arg.socks = &peers[i];
+                  success = 1;
+                  break;
+            }
+      }
+      if(!success)return 0;
+      if(ruc.n == ruc.cap){
+            ruc.cap *= 2;
+            struct sock_pair* tmp_sp = malloc(sizeof(struct sock_pair)*ruc.cap);
+            memcpy(tmp_sp, ruc.sp, sizeof(struct sock_pair)*ruc.n);
+            free(ruc.sp);
+            ruc.sp = tmp_sp;
+      }
+
+      /* adding sender_sock to ruc as requester,
+       * paired with *arg.socks as sender
+       */
+      ruc.sp[ruc.n].req = sender_sock;
+      ruc.sp[ruc.n++].snd = *arg.socks;
+
+      arg.n_peers = 1;
+      arg.ref_no = ref_no;
+      arg.msg_buf = 0;
+      arg.msg_type = MSG_RNAME_UP_REQ;
+      memset(arg.msg, 0, 201);
+      /* only 50 chars are used */
+
+      pthread_t pth;
+      pthread_create(&pth, NULL, &notify_pth, &arg);
+      return !pthread_join(pth, NULL);
+}
+
+/* need to find a way to know who requested update */
+_Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, struct rname_up_cont ruc){
+      struct notif_arg arg;
+      _Bool found = 0;
+      for(int i = 0; i < ruc.n; ++i){
+            /* TODO: handle case where multiple requesters requested from sender */
+            /* TODO: just make it so that only one request struct can be in place at a time */
+            if(ruc.sp[i].snd == sender_sock){
+                  arg.socks = &ruc.sp[i].req;
+                  found = 1;
+                  break;
+            }
+      }
+      if(!found)return 0;
+      arg.n_peers = 1;
+      arg.ref_no = ref_no;
+      arg.msg_buf = label;
+      arg.msg_type = MSG_RNAME_UP_INF;
+      memset(arg.msg, 0, 201);
+      strncpy(arg.msg, label, 50);
+
+      pthread_t pth;
+      pthread_create(&pth, NULL, &notify_pth, &arg);
+      return !pthread_join(pth, NULL);
+}
+
 /* TODO: add petition functionality!! */
 /* pea should be compatible with no alterations */
-_Bool mb_handler(int mb_type, int ref_no, char* str_arg){
+_Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
       switch(mb_type){
             case MSG_CREATE_THREAD:
                   log_f("room created with string:");
@@ -153,6 +226,14 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg){
             case MSG_REPLY_THREAD:
                   spread_msg(peers, n_peers, ref_no, str_arg);
                   break;
+            case MSG_RNAME_UP_REQ:
+                  pass_rname_up_req(peers, n_peers, ref_no, sender_sock);
+                  break;
+            /* pass along room name to she who requested it */
+            case MSG_RNAME_UP_INF:
+                  /* sender sock is sender in this case */
+                  pass_rname_up_inf(ref_no, sender_sock, str_arg, ruc);
+                  break;
             default: return 0;
       }
       log_f("the following str_arg was recvd");
@@ -166,6 +247,10 @@ void init_host(){
       peers = malloc(sizeof(int)*peer_cap);
       /* TODO: destroy this */
       pthread_mutex_init(&peer_mut, NULL);
+
+      ruc.n = 0;
+      ruc.cap = 50;
+      ruc.sp = malloc(sizeof(struct sock_pair)*ruc.cap);
 }
 
 void* read_cl_pth(void* peer_sock_v){
@@ -182,7 +267,7 @@ void* read_cl_pth(void* peer_sock_v){
             log_f_int(mb_inf[1]);
             log_f("read str_buf: ");
             log_f(str_buf);
-            mb_handler(mb_inf[0], mb_inf[1], str_buf);
+            mb_handler(mb_inf[0], mb_inf[1], str_buf, *peer_sock);
       }
       /* setting peers[x] to 0 to avoid resizing/rearranging indices
        * of this array, since add_host uses offsets into peers as param

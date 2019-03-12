@@ -51,7 +51,8 @@ struct room_lst* room_lookup(struct rm_hash_lst rml, char* rm_name, int ref_no){
 }
 
 /* return existence of ref_no */
-struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, uid_t creator){
+/* param rl is optional - in case rl is already malloc'd - this happens when a name is being updated */
+struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, uid_t creator, struct room_lst* rl){
       /* int ind = ref_no % rml->bux; */
       /* TODO: should more chars be summed for hashing */
       // TODO: ref_no should be used for hashing because the most
@@ -59,7 +60,7 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
       int ind = *name % rml->bux;
       struct room_lst* cur;
       if(!rml->rooms[ind]){
-            cur = rml->rooms[ind] = malloc(sizeof(struct room_lst));
+            cur = rml->rooms[ind] = (rl) ? rl : malloc(sizeof(struct room_lst));
             rml->in_use[rml->n++] = ind;
       }
       else{
@@ -68,25 +69,57 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
             struct room_lst* tmp_cur;
             for(tmp_cur = rml->rooms[ind]; tmp_cur->next; tmp_cur = tmp_cur->next)
                   if(tmp_cur->ref_no == ref_no)return NULL;
-            cur = tmp_cur->next = malloc(sizeof(struct room_lst));
+            cur = tmp_cur->next = (rl) ? rl : malloc(sizeof(struct room_lst));
       }
-      cur->creator = creator;
-      cur->ref_no = ref_no;
-      strncpy(cur->label, name, sizeof(cur->label)-1);
+      if(!rl){
+            cur->creator = creator;
+            cur->ref_no = ref_no;
+            strncpy(cur->label, name, sizeof(cur->label)-1);
 
-      /* msg queue! */
-      /* TODO: this should be done in a separate init_msg_queue func */
-      cur->n_msg = 0;
-      cur->msg_queue_cap = 50;
-      /* TODO: free */
-      cur->msg_queue = malloc(sizeof(struct msg_queue_entry)*cur->msg_queue_cap);
-      cur->msg_queue_base = cur->msg_queue;
-      /* TODO: destroy this */
-      pthread_mutex_init(&cur->room_msg_queue_lck, NULL);
+            /* msg queue! */
+            /* TODO: this should be done in a separate init_msg_queue func */
+            cur->n_msg = 0;
+            cur->msg_queue_cap = 50;
+            /* TODO: free */
+            cur->msg_queue = malloc(sizeof(struct msg_queue_entry)*cur->msg_queue_cap);
+            cur->msg_queue_base = cur->msg_queue;
+            /* TODO: destroy this */
+            pthread_mutex_init(&cur->room_msg_queue_lck, NULL);
+      }
 
       cur->next = NULL;
 
       return cur;
+}
+
+_Bool rename_room_rml(struct rm_hash_lst rml, int ref_no, char* new_name){
+      struct room_lst* rl = room_lookup(rml, NULL, ref_no);
+      if(!rl)return 0;
+      /* if rl is only entry in its bucket */
+      int bucket = *rl->label % rml.bux;
+      if(rml.rooms[bucket] == rl){
+            // in_use must be adjusted
+            for(int i = 0; rml.in_use[i] != -1; ++i){
+                  if(rml.in_use[i] == bucket){
+                        memmove(&rml.in_use[i], &rml.in_use[i+1], rml.n-i-1);
+                        break;
+                  }
+            }
+      }
+      /* finding room_lst* before rl */
+      struct room_lst* rl_prev = rml.rooms[bucket];
+      if(rl_prev != rl){
+            for(; rl_prev->next != rl; rl_prev = rl_prev->next);
+            /* is this redundant? */
+            if(!rl_prev || !rl_prev->next)return 0;
+            rl_prev->next = NULL;
+      }
+      else rml.rooms[bucket] = NULL;
+      /* rl must be moved from its current bucket */
+      strncpy(rl->label, new_name, sizeof(rl->label)-1);
+
+      add_room_rml(&rml, ref_no, new_name, rl->creator, rl);
+      return 1;
 }
 
 _Bool insert_msg_msg_queue(struct room_lst* rm, char* msg, uid_t sender){
@@ -127,6 +160,55 @@ _Bool pop_msg_queue(struct room_lst* rm, char* msg, uid_t* sender){
       return ret;
 }
 
+/* ~~~~~~~~~ communication begin ~~~~~~~~~~~ */
+int send_mb_r(struct mb_msg mb_a, int sock){
+      int ret = 1;
+      #ifdef ASH_DEBUG
+      printf("sending: %i %i %s\n", mb_a.mb_inf[0], mb_a.mb_inf[1], mb_a.str_arg);
+      #endif
+      ret &= send(sock, mb_a.mb_inf, sizeof(int)*2, 0) != -1;
+      ret &= send(sock, mb_a.str_arg, 200, 0) != -1;
+      return ret;
+}
+
+/* returns thread ref no */
+int create_room(char* rm_name, int sock){
+      struct mb_msg mb_a;
+      mb_a.mb_inf[0] = MSG_CREATE_THREAD;
+      mb_a.mb_inf[1] = -1;
+      memset(mb_a.str_arg, 0, 201);
+      strncpy(mb_a.str_arg, rm_name, 200);
+      return send_mb_r(mb_a, sock);
+}
+
+int reply_room(int rm_ref_no, char* msg, int sock){
+      struct mb_msg mb_a;
+      mb_a.mb_inf[0] = MSG_REPLY_THREAD;
+      mb_a.mb_inf[1] = rm_ref_no;
+      memset(mb_a.str_arg, 0, 201);
+      strncpy(mb_a.str_arg, msg, 200);
+      return send_mb_r(mb_a, sock);
+}
+
+int req_rname_update(int rm_ref_no, int sock){
+      struct mb_msg mb_a;
+      mb_a.mb_inf[0] = MSG_RNAME_UP_REQ;
+      mb_a.mb_inf[1] = rm_ref_no;
+      memset(mb_a.str_arg, 0, 201);
+      return send_mb_r(mb_a, sock);
+}
+
+int snd_rname_update(int rm_ref_no, char* rm_name, int sock){
+      struct mb_msg mb_a;
+      mb_a.mb_inf[0] = MSG_RNAME_UP_INF;
+      mb_a.mb_inf[1] = rm_ref_no;
+      memset(mb_a.str_arg, 0, 201);
+      strncpy(mb_a.str_arg, rm_name, 200);
+      return send_mb_r(mb_a, sock);
+}
+
+/* ~~~~~~~~~ communication end ~~~~~~~~~~~ */
+
 /* four reads are executed each iteration:
  *    1: uid_t sender
  *    2: int   msg_type
@@ -158,57 +240,43 @@ void* read_notif_pth(void* rnp_arg_v){
             #endif
 
             /* if we've received a msgtype_notif, add room */
-            if(msg_type == MSGTYPE_NOTIF){
-                  add_room_rml(rnp_arg->rml, ref_no, buf, uid);
-                  printf("%s%i%s: %s[ROOM_CREATE %s]%s\n", ANSI_GRE, uid, ANSI_NON, ANSI_RED, buf, ANSI_NON);
-            }
-            /* as of now, only other msg_type is MSGTYPE_MSG */
-            else{
-                  // TODO: room lookup is too slow without label
-                  // TODO: should ref_no be used to hash?
-                  // this is the most frequent lookup
-                  cur_r = room_lookup(*rnp_arg->rml, NULL, ref_no);
-                  if(!cur_r){
-                        cur_r = add_room_rml(rnp_arg->rml, ref_no, "{UNKNOWN_LABEL}", uid);
-                        printf("%s%i%s: %s[LEGACY_ROOM_CREATE {UNKNOWN_LABEL}]%s\n", ANSI_GRE, uid, ANSI_NON, ANSI_RED, ANSI_NON);
-                  }
-                  /* adding message to msg stack */
-                  /* if the above code is being used, no need to check cur_r */
-                  // if(cur_r)insert_msg_msg_queue(cur_r, buf, uid);
-                  insert_msg_msg_queue(cur_r, buf, uid);
+            switch(msg_type){
+                  case MSGTYPE_NOTIF:
+                        add_room_rml(rnp_arg->rml, ref_no, buf, uid, NULL);
+                        printf("%s%i%s: %s[ROOM_CREATE %s]%s\n", ANSI_GRE, uid, ANSI_NON, ANSI_RED, buf, ANSI_NON);
+                        break;
+                  case MSGTYPE_MSG:
+                        // TODO: room lookup is too slow without label
+                        // TODO: should ref_no be used to hash?
+                        // this is the most frequent lookup
+                        cur_r = room_lookup(*rnp_arg->rml, NULL, ref_no);
+                        if(!cur_r){
+                              cur_r = add_room_rml(rnp_arg->rml, ref_no, "{UNKNOWN_LABEL}", uid, NULL);
+                              printf("%s%i%s: %s[LEGACY_ROOM_CREATE {UNKNOWN_LABEL}]%s\n",
+                              ANSI_GRE, uid, ANSI_NON, ANSI_RED, ANSI_NON);
+                              req_rname_update(ref_no, rnp_arg->sock);
+                        }
+                        /* adding message to msg stack */
+                        /* if the above code is being used, no need to check cur_r */
+                        // if(cur_r)insert_msg_msg_queue(cur_r, buf, uid);
+                        insert_msg_msg_queue(cur_r, buf, uid);
+                        break;
+
+                  /* handling for predated label updates */
+
+                  /* send out room name if it's requested */
+                  case MSG_RNAME_UP_REQ:
+                        cur_r = room_lookup(*rnp_arg->rml, NULL, ref_no);
+                        if(!cur_r)break;
+                        snd_rname_update(ref_no, cur_r->label, rnp_arg->sock);
+                        break;
+                  case MSG_RNAME_UP_INF:
+                        rename_room_rml(*rnp_arg->rml, ref_no, buf);
+                        break;
             }
       }
       printf("%slost connection to board%s\n", ANSI_RED, ANSI_NON);
       return NULL;
-}
-
-int send_mb_r(struct mb_msg mb_a, int sock){
-      int ret = 1;
-      #ifdef ASH_DEBUG
-      printf("sending: %i %i %s\n", mb_a.mb_inf[0], mb_a.mb_inf[1], mb_a.str_arg);
-      #endif
-      ret &= send(sock, mb_a.mb_inf, sizeof(int)*2, 0) != -1;
-      ret &= send(sock, mb_a.str_arg, 200, 0) != -1;
-      return ret;
-}
-
-/* returns thread ref no */
-int create_room(char* rm_name, int sock){
-      struct mb_msg mb_a;
-      mb_a.mb_inf[0] = MSG_CREATE_THREAD;
-      mb_a.mb_inf[1] = -1;
-      memset(mb_a.str_arg, 0, 201);
-      strncpy(mb_a.str_arg, rm_name, 200);
-      return send_mb_r(mb_a, sock);
-}
-
-int reply_room(int th_ref_no, char* msg, int sock){
-      struct mb_msg mb_a;
-      mb_a.mb_inf[0] = MSG_REPLY_THREAD;
-      mb_a.mb_inf[1] = th_ref_no;
-      memset(mb_a.str_arg, 0, 201);
-      strncpy(mb_a.str_arg, msg, 200);
-      return send_mb_r(mb_a, sock);
 }
 
 void p_help(){
@@ -316,8 +384,8 @@ _Bool client(char* sock_path){
             return 0;
       }
 
-      printf("%swelcome to **%s%s%s** %s\n", ANSI_BLU, ANSI_MGNTA, sock_path, ANSI_BLU, ANSI_NON);
-      p_help();
+      printf("%swelcome to **%s%s%s** %s\nenter \"/h\" for help at any time\n",
+      ANSI_BLU, ANSI_MGNTA, sock_path, ANSI_BLU, ANSI_NON);
 
       struct rm_hash_lst rml = init_rm_hash_lst(100);
 

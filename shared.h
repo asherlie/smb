@@ -1,11 +1,18 @@
 #define _GNU_SOURCE
 
+/* TODO: consolidate these two sets of macros */
 #define MSG_CREATE_THREAD 2
 #define MSG_REMOVE_THREAD 3
 #define MSG_REPLY_THREAD  4
+// #define MSG_RNAME_UP      4
 
 #define MSGTYPE_NOTIF     0 
 #define MSGTYPE_MSG       1
+// #define MSGTYPE_RNAME_UP  2
+
+/* these two msg types update unknown labels */
+#define MSG_RNAME_UP_REQ  5
+#define MSG_RNAME_UP_INF  6
 
 #define ANSI_RED   "\x1B[31m"
 #define ANSI_NON   "\x1b[0m"
