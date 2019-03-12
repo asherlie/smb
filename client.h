@@ -4,7 +4,7 @@ struct msg_queue_entry{
 };
 
 /* hashed array of thread linked lists */
-struct thread_lst{
+struct room_lst{
       uid_t creator;
       int ref_no, n_msg, msg_queue_cap;
       char label[50];
@@ -18,13 +18,13 @@ struct thread_lst{
       /* this THREAD reads notifications sent from host.c */
       // don't need this thread here - just need one to read
       // updates from host
-       pthread_mutex_t thread_msg_queue_lck;
+       pthread_mutex_t room_msg_queue_lck;
 
-      struct thread_lst* next;
+      struct room_lst* next;
 };
 
-struct th_hash_lst{
-      struct thread_lst** threads;
+struct rm_hash_lst{
+      struct room_lst** rooms;
 
       /* n is used only to keep track of in_use */
       int bux, n, * in_use;
@@ -32,7 +32,7 @@ struct th_hash_lst{
 
 struct read_notif_pth_arg{
       int sock;
-      struct th_hash_lst* thl;
+      struct rm_hash_lst* rml;
 };
 
 _Bool client(char* sock_path);

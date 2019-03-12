@@ -1,3 +1,6 @@
+/* TODO: change all mentions of threads to rooms */
+/* TODO: rename to scr - simple chat room */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -29,6 +32,7 @@
  * as argument
  *
  *   ex:
+ *     TODO: this should add a .smb to the file
  *     ./smb thinkpad.smb
  *
  */
@@ -39,8 +43,6 @@ void p_usage(char* bname){
       bname, bname);
 }
 
-
-/* TODO: is this more of a chatroom? */
 int main(int a, char** b){
       if(a == 1){
             p_usage(*b);

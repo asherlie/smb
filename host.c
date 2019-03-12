@@ -61,7 +61,7 @@ void* notify_pth(void* v_arg){
             if(!arg->socks[i])continue;
             /* sends ref no, message contents
              * message contents will be NULL
-             * if this is a thread creation
+             * if this is a room creation
              * notification
              */
             log_f("sending credentials");
@@ -134,18 +134,20 @@ _Bool spread_thread_notif(int* peers, int n_peers, int ref_no, char* label){
       return !pthread_join(pth, NULL);
 }
 
+/* TODO: add petition functionality!! */
+/* pea should be compatible with no alterations */
 _Bool mb_handler(int mb_type, int ref_no, char* str_arg){
       switch(mb_type){
             case MSG_CREATE_THREAD:
-                  log_f("thread created with string:");
+                  log_f("room created with string:");
                   log_f(str_arg);
                   log_f("end_str");
                   // spread_thread_notif(peers, n_peers, ref_no, str_arg);
                   spread_thread_notif(peers, n_peers, u_ref_no++, str_arg);
                   break;
             case MSG_REMOVE_THREAD:
-                  /* only she who created a thread can delete it */
-                  log_f("thread with following number removed");
+                  /* only she who created a room can delete it */
+                  log_f("room with following number removed");
                   log_f_int(ref_no);
                   break;
             case MSG_REPLY_THREAD:
@@ -170,7 +172,6 @@ void* read_cl_pth(void* peer_sock_v){
       int* peer_sock = ((int*)peer_sock_v);
       int mb_inf[2] = {-1, -1}; char str_buf[201];
 
-      /* TODO: zero peer array on exit */
       while(*peer_sock){
             memset(str_buf, 0, 201);
             if(read(*peer_sock, mb_inf, sizeof(int)*2) <= 0)break;
