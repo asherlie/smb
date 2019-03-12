@@ -101,7 +101,10 @@ _Bool rename_room_rml(struct rm_hash_lst rml, int ref_no, char* new_name){
             // in_use must be adjusted
             for(int i = 0; rml.in_use[i] != -1; ++i){
                   if(rml.in_use[i] == bucket){
-                        memmove(&rml.in_use[i], &rml.in_use[i+1], rml.n-i-1);
+                        printf("moving rml.in_use[%i], rml.in_use[%i], %i)\n", i, i+1, rml.bux-i-1);
+                        // memmove(&rml.in_use[i], &rml.in_use[i+1], (--rml.n)-i-1);
+                        memmove(rml.in_use+i, rml.in_use+i+1, rml.bux-i-1);
+                        --rml.n;
                         break;
                   }
             }
@@ -313,6 +316,13 @@ void* repl_pth(void* rnp_arg_v){
             inp[--b_read] = 0;
             if(*inp == '/' && b_read > 1){
                   switch(inp[1]){
+                        #ifdef ASH_DEBUG
+                        case 'p':
+                              for(int i = 0; i < 10; ++i){
+                                    printf("in_use[%i] == %i\n", i, rnp_arg->rml->in_use[i]);
+                              }
+                              break;
+                        #endif
                         /* both /join and /room will join an existing room */
                         case 'j':
                         case 'r':

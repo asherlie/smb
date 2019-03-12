@@ -185,7 +185,8 @@ _Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock){
 _Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, struct rname_up_cont ruc){
       struct notif_arg arg;
       _Bool found = 0;
-      for(int i = 0; i < ruc.n; ++i){
+      int i;
+      for(i = 0; i < ruc.n; ++i){
             /* TODO: handle case where multiple requesters requested from sender */
             /* TODO: just make it so that only one request struct can be in place at a time */
             if(ruc.sp[i].snd == sender_sock){
@@ -204,7 +205,10 @@ _Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, struct rname_u
 
       pthread_t pth;
       pthread_create(&pth, NULL, &notify_pth, &arg);
-      return !pthread_join(pth, NULL);
+      _Bool ret = !pthread_join(pth, NULL);
+      memmove();
+      --ruc.n;
+      return ret;
 }
 
 /* TODO: add petition functionality!! */
