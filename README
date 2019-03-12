@@ -13,8 +13,8 @@ client commands:
       /[h]elp:
             prints this information
 
-      /[j]oin   [room_name]:
-      /[t]hread [room_name]:
+      /[j]oin  [room_name]:
+      /[r]room [room_name]:
             join room with room_name
 
       /[n]ext:

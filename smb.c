@@ -1,23 +1,13 @@
-/* TODO: change all mentions of threads to rooms */
-/* TODO: rename to scr - simple chat room */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-
 #include <limits.h>
-#include <pthread.h>
 
 #include "host.h"
 #include "client.h"
 
 /* 
- * smb
- * [s]imple [m]essage [b]oard
- *
- * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
- *
  * a new mb can be created by running smb with 
  * the -C flag followed by board name
  * this will create a unix socket file by the 
@@ -39,7 +29,7 @@
 
 void p_usage(char* bname){
       printf("usage:\n  %s -C [board_name] - creates a board with name [board_name]\n"
-                         "  %s [board_path]    - joins board at path [board_path]\n",
+                     "  %s [board_path]    - joins board at path [board_path]\n",
       bname, bname);
 }
 
