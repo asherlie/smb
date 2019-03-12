@@ -1,6 +1,5 @@
-smb is a chatroom for multi-user systems
-chatrooms are spawned by ./smb -C and can contain arbitrarily many
-rooms, referred to as threads
+smb is a chatroom for multi user systems
+chatrooms are spawned with ./smb -C and can contain arbitrarily many rooms
 
 usage:
       ./smb -C [board_name] - creates a board with name [board_name]
@@ -9,27 +8,27 @@ usage:
 client commands:
 
       [message]:
-            sends message to current thread
+            sends message to current room
 
       /[h]elp:
             prints this information
 
-      /[j]oin   [thread_name]:
-      /[t]hread [thread_name]:
-            join thread with thread_name
+      /[j]oin   [room_name]:
+      /[t]hread [room_name]:
+            join room with room_name
 
       /[n]ext:
-            switch to next thread with same first char as current
+            switch to next room with same first char as current
 
-      /[c]reate [thread_name]:
-            creates a thread with name thread_name
+      /[c]reate [room_name]:
+            creates a room with name room_name
 
       /[l]ist:
-            lists all threads, current thread will be blue
+            lists all rooms, current room will be blue
 
       /[w]hich:
-            prints current thread name and reference number
+            prints current room name and reference number
 
       /[e]xit:
       /e[x]it:
-            exits current thread
+            exits current room
