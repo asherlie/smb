@@ -1,3 +1,5 @@
+#include <pthread.h>
+
 struct msg_queue_entry{
       char msg[201];
       uid_t sender;
