@@ -274,15 +274,15 @@ void* read_notif_pth(void* rnp_arg_v){
                         snd_rname_update(ref_no, cur_r->label, rnp_arg->sock);
                         break;
                   case MSG_RNAME_UP_INF:
+                        /* TODO: confirm that no else condition is required
+                         * -- make sure that this should always evaluate to 1
+                         */
                         if((cur_r = rename_room_rml(*rnp_arg->rml, ref_no, buf)))
                               /* TODO: should a distinction be made between ROOM_CREATE and
                                * ROOM_SHARE, for ex. printf("%s%i%s: %s[ROOM_SHARE]%s\n",);
                                */
                               printf("%s%i%s: %s[*ROOM_CREATE* %s]%s\n",
                               ANSI_GRE, cur_r->creator, ANSI_NON, ANSI_RED, buf, ANSI_NON);
-                        else
-                              printf("%s%i%s: %s[*ROOM_CREATE* {UNKNOWN_LABEL}]%s\n",
-                              ANSI_GRE, cur_r->creator, ANSI_NON, ANSI_RED, ANSI_NON);
                         break;
             }
       }
