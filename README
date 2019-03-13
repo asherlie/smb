@@ -1,6 +1,9 @@
 smb is a chatroom for multi user systems
 chatrooms are spawned with ./smb -C and can contain arbitrarily many rooms
 
+the host does not store messages and does nothing more than reroute messages
+beteen clients
+
 usage:
       ./smb -C [board_name] - creates a board with name [board_name]
       ./smb    [board_path] - joins board at path [board_path]
@@ -32,3 +35,9 @@ client commands:
       /[e]xit:
       /e[x]it:
             exits current room
+
+[ROOM_CREATE]   indicates that a new room has been created
+[*ROOM_CREATE*] indicates that a room whose creation predates your
+                joining of the board has been shared with you -
+                the sharing of rooms happens automatically when a
+                message is sent in a previously unknown board

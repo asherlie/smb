@@ -92,9 +92,10 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
       return cur;
 }
 
-_Bool rename_room_rml(struct rm_hash_lst rml, int ref_no, char* new_name){
+/* returns the room_lst* that has been inserted to rml, or NULL on failure */
+struct room_lst* rename_room_rml(struct rm_hash_lst rml, int ref_no, char* new_name){
       struct room_lst* rl = room_lookup(rml, NULL, ref_no);
-      if(!rl)return 0;
+      if(!rl)return NULL;
       /* if rl is only entry in its bucket */
       int bucket = *rl->label % rml.bux;
       if(rml.rooms[bucket] == rl){
@@ -114,7 +115,7 @@ _Bool rename_room_rml(struct rm_hash_lst rml, int ref_no, char* new_name){
       if(rl_prev != rl){
             for(; rl_prev->next != rl; rl_prev = rl_prev->next);
             /* is this redundant? */
-            if(!rl_prev || !rl_prev->next)return 0;
+            if(!rl_prev || !rl_prev->next)return NULL;
             rl_prev->next = NULL;
       }
       else rml.rooms[bucket] = NULL;
@@ -122,7 +123,7 @@ _Bool rename_room_rml(struct rm_hash_lst rml, int ref_no, char* new_name){
       strncpy(rl->label, new_name, sizeof(rl->label)-1);
 
       add_room_rml(&rml, ref_no, new_name, rl->creator, rl);
-      return 1;
+      return rl;
 }
 
 _Bool insert_msg_msg_queue(struct room_lst* rm, char* msg, uid_t sender){
@@ -246,7 +247,8 @@ void* read_notif_pth(void* rnp_arg_v){
             switch(msg_type){
                   case MSGTYPE_NOTIF:
                         add_room_rml(rnp_arg->rml, ref_no, buf, uid, NULL);
-                        printf("%s%i%s: %s[ROOM_CREATE %s]%s\n", ANSI_GRE, uid, ANSI_NON, ANSI_RED, buf, ANSI_NON);
+                        printf("%s%i%s: %s[ROOM_CREATE %s]%s\n",
+                        ANSI_GRE, uid, ANSI_NON, ANSI_RED, buf, ANSI_NON);
                         break;
                   case MSGTYPE_MSG:
                         // TODO: room lookup is too slow without label
@@ -255,8 +257,6 @@ void* read_notif_pth(void* rnp_arg_v){
                         cur_r = room_lookup(*rnp_arg->rml, NULL, ref_no);
                         if(!cur_r){
                               cur_r = add_room_rml(rnp_arg->rml, ref_no, "{UNKNOWN_LABEL}", uid, NULL);
-                              printf("%s%i%s: %s[LEGACY_ROOM_CREATE {UNKNOWN_LABEL}]%s\n",
-                              ANSI_GRE, uid, ANSI_NON, ANSI_RED, ANSI_NON);
                               req_rname_update(ref_no, rnp_arg->sock);
                         }
                         /* adding message to msg stack */
@@ -274,7 +274,15 @@ void* read_notif_pth(void* rnp_arg_v){
                         snd_rname_update(ref_no, cur_r->label, rnp_arg->sock);
                         break;
                   case MSG_RNAME_UP_INF:
-                        rename_room_rml(*rnp_arg->rml, ref_no, buf);
+                        if((cur_r = rename_room_rml(*rnp_arg->rml, ref_no, buf)))
+                              /* TODO: should a distinction be made between ROOM_CREATE and
+                               * ROOM_SHARE, for ex. printf("%s%i%s: %s[ROOM_SHARE]%s\n",);
+                               */
+                              printf("%s%i%s: %s[*ROOM_CREATE* %s]%s\n",
+                              ANSI_GRE, cur_r->creator, ANSI_NON, ANSI_RED, buf, ANSI_NON);
+                        else
+                              printf("%s%i%s: %s[*ROOM_CREATE* {UNKNOWN_LABEL}]%s\n",
+                              ANSI_GRE, cur_r->creator, ANSI_NON, ANSI_RED, ANSI_NON);
                         break;
             }
       }
