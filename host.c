@@ -320,6 +320,7 @@ _Bool create_mb(char* name){
             printf("mb: \"%s\" already exists\n", name);
             return 0;
       }
+      printf("%s[BOARD_CREATE %s]%s\n", ANSI_RED, name, ANSI_NON);
       #ifndef ASH_DEBUG
       pid_t pid = fork();
       if(pid > 0){
@@ -339,7 +340,7 @@ _Bool create_mb(char* name){
       || listen(sock, 0) == -1)return 0;
 
       chmod(addr.sun_path, 0777);
-      
+
       init_host();
       /* TODO: find way to safely detach/stop thread */
       pthread_t add_host_pth_pth;
