@@ -70,6 +70,7 @@ void p_usage(char* bname){
 }
 
 int main(int a, char** b){
+      /* TODO: should we join the first .smbr we can find in this case? */
       if(a == 1){
             p_usage(*b);
             return 1;
@@ -81,8 +82,11 @@ int main(int a, char** b){
             if(*b[i] == '-' && b[i][1] == 'C'){
                   /* b[i+1] will always exist */
                   char ext[PATH_MAX] = {0};
-                  snprintf(ext, PATH_MAX, "%s.smbr", b[i+1]);
+                  snprintf(ext, PATH_MAX,
+                  (strchr(b[i+1], '/')) ? "%s.smbr" : "/var/tmp/%s.smbr",
+                  b[i+1]);
                   create_mb(ext);
+                  /* create_mb shouldn't return */
                   puts("failed to create mb");
                   return 1;
             }
