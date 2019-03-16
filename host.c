@@ -13,14 +13,19 @@
 
 int u_ref_no = 0;
 
+/* this function does nothing is ASH_DEBUG is not defined */
 void log_f(char* msg){
-      #ifndef ASH_DEBUG
+      #ifdef LOGF_DB
       FILE* fp = fopen("LOGFILE", "a");
       fprintf(fp, "%s%s%s\n", ANSI_RED, msg, ANSI_NON);
       fclose(fp);
       return;
       #endif
+      #ifdef ASH_DEBUG
       puts(msg);
+      #endif
+      /* silence warnings in case ASH_DEBUG isn't defined */
+      (void)msg;
 }
 
 void log_f_int(int i){
@@ -60,41 +65,41 @@ void* notify_pth(void* v_arg){
       struct notif_arg* arg = (struct notif_arg*)v_arg;
       uid_t s_cred;
 
-      pthread_mutex_lock(&peer_mut);
+      pthread_mutex_lock(&peer_mut); 
 
       for(int i = 0; i < arg->n_peers; ++i){
-            if(!arg->socks[i])continue;
+            if(arg->socks[i] == -1)continue;
             /* sends ref no, message contents
              * message contents will be NULL
              * if this is a room creation
              * notification
              */
             log_f("sending credentials");
-            /* TODO: is this sending incorrect creds? */
+            /* TODO: is this sendi!ng incorrect creds? */
             s_cred = get_peer_cred(arg->socks[i]);
             if(send(arg->socks[i], &s_cred, sizeof(uid_t), 0) <= 0){
-                  arg->socks[i] = 0;
+                  arg->socks[i] = -1;
                   break;
             }
             /* MSGTYPE */
             log_f("sending msgtype");
             if(send(arg->socks[i], &arg->msg_type, sizeof(int), 0) <= 0){
-                  arg->socks[i] = 0;
+                  arg->socks[i] = -1;
                   break;
             }
             /* sending ref_no */
             log_f("ref no");
             if(send(arg->socks[i], &arg->ref_no, sizeof(int), 0) <= 0){
-                  arg->socks[i] = 0;
+                  arg->socks[i] = -1;
                   break;
             }
             log_f("msg");
             if(send(arg->socks[i], arg->msg, 200, 0) <= 0){
-                  arg->socks[i] = 0;
+                  arg->socks[i] = -1;
                   break;
             }
       }
-      pthread_mutex_unlock(&peer_mut);
+      pthread_mutex_unlock(&peer_mut); 
       log_f("returning notify_pth");
       return NULL;
 }
@@ -148,7 +153,7 @@ _Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock){
        */
       _Bool success = 0;
       for(int i = 0; i < n_peers; ++i){
-            if(peers[i] && peers[i] != sender_sock){
+            if(peers[i] != -1 && peers[i] != sender_sock){
                   arg.socks = &peers[i];
                   success = 1;
                   break;
@@ -213,6 +218,20 @@ _Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, struct rname_u
       return ret;
 }
 
+int assign_ref_no(){
+      /*
+       * the only other place u_ref_no's value is changed is
+       * within a lock on peer_mut
+       * this mutex is being used to avoid creating an additional
+       * one
+       */
+      pthread_mutex_lock(&peer_mut);
+      int ret = u_ref_no;
+      ++u_ref_no;
+      pthread_mutex_unlock(&peer_mut);
+      return ret;
+}
+
 /* TODO: add petition functionality!! */
 /* pea should be compatible with no alterations */
 _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
@@ -221,9 +240,9 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
                   log_f("room created with string:");
                   log_f(str_arg);
                   log_f("end_str");
-                  // spread_thread_notif(peers, n_peers, ref_no, str_arg);
-                  spread_thread_notif(peers, n_peers, u_ref_no++, str_arg);
+                  spread_thread_notif(peers, n_peers, assign_ref_no(), str_arg);
                   break;
+            /* TODO: thread removal */
             case MSG_REMOVE_THREAD:
                   /* only she who created a room can delete it */
                   log_f("room with following number removed");
@@ -247,13 +266,17 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
       return 1;
 }
 
-void init_host(){
+void init_peers(_Bool init_mut){
       peer_cap = 20;
       n_peers = 0;
       peers = malloc(sizeof(int)*peer_cap);
+      if(!init_mut)return;
       /* TODO: destroy this */
       pthread_mutex_init(&peer_mut, NULL);
+}
 
+void init_host(){
+      init_peers(1);
       ruc.n = 0;
       ruc.cap = 50;
       ruc.sp = malloc(sizeof(struct sock_pair)*ruc.cap);
@@ -263,8 +286,14 @@ void* read_cl_pth(void* peer_sock_v){
       int* peer_sock = ((int*)peer_sock_v);
       int mb_inf[2] = {-1, -1}; char str_buf[201];
 
-      while(*peer_sock){
+      while(*peer_sock >= 0){
             memset(str_buf, 0, 201);
+            /* TODO: should be locking peer_mut but
+             * peers won't be able to be added in
+             * add_host bc read() blocks
+             * it's ok not to for now because we're checking
+             * the return value of all read() calls
+             */
             if(read(*peer_sock, mb_inf, sizeof(int)*2) <= 0)break;
             if(read(*peer_sock, str_buf, 200) <= 0)break;
 
@@ -281,7 +310,26 @@ void* read_cl_pth(void* peer_sock_v){
        *
        * peers[x] is checked in notify_pth
        */
-      *peer_sock = 0;
+
+      /* *peer_sock is an entry in peers */
+      *peer_sock = -1;
+
+      /* EXPERIMENTAL FEATURE */
+      /* if all peers have disconnected, u_ref_no and peers are reset */
+      /* i'm hesitant to access peers from here but... */
+      pthread_mutex_lock(&peer_mut);
+      _Bool reinit = 1;
+      for(int i = 0; i < n_peers; ++i)
+            if(peers[i] >= 0){
+                  reinit = 0;
+                  break;
+            }
+      if(reinit){
+            free(peers);
+            init_peers(0);
+            u_ref_no = 0;
+      }
+      pthread_mutex_unlock(&peer_mut);
       return NULL;
 }
 
@@ -296,13 +344,13 @@ void add_host(int sock){
       }
       peers[n_peers++] = sock;
 
+      pthread_mutex_unlock(&peer_mut);
+
       pthread_t read_cl_pth_pth;
       /* is this too hacky? should i just malloc some mem? */
       /* this means that i need to guarantee peers doesn't have entries removed/rearranged */
       pthread_create(&read_cl_pth_pth, NULL, &read_cl_pth, (peers+n_peers)-1);
       pthread_detach(read_cl_pth_pth);
-
-      pthread_mutex_unlock(&peer_mut);
 }
 
 void* add_host_pth(void* local_sock_v){
