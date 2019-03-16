@@ -1,12 +1,22 @@
 smb is a chatroom for multi user systems
-chatrooms are spawned with ./smb -C and can contain arbitrarily many rooms
+
+boards are spawned with ./smb -C and can contain arbitrarily many rooms
+
+unless the -pwd flag or a complete file path is provided, 
+./smb -C [board_name] will create a .smbr file in /var/tmp/board_name.smbr
+
+the smb client will first search the current directory before checking
+/var/tmp for a matching board file
 
 the host does not store messages and does nothing more than reroute messages
 beteen clients
 
 usage:
-      ./smb -C [board_name] - creates a board with name [board_name]
-      ./smb    [board_path] - joins board at path [board_path]
+      ./smb {-[p]wd} -C [board_name] - creates a board with name [board_name]
+      ./smb {-[p]wd}    [board_path] - joins board at path [board_path]
+
+the -pwd flag limits the scope of smb's board creation and board searching to
+the current working directory
 
 client commands:
 
