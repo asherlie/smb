@@ -75,7 +75,8 @@ int main(int a, char** b){
             p_usage(*b);
             return 1;
       }
-      _Bool lim_pwd = 0;
+      _Bool lim_pwd = 0, create = 0;
+      int cre_arg;
       for(int i = 1; i < a; ++i){
             if(*b[i] == '-'){
                   /* pwd mode */
@@ -83,17 +84,22 @@ int main(int a, char** b){
                         lim_pwd = 1;
                         continue;
                   }
+                  /* host/create mode */
                   if(i < a-1 && b[i][1] == 'C'){
-                        char ext[PATH_MAX] = {0};
-                        snprintf(ext, PATH_MAX,
-                        (strchr(b[i+1], '/') || lim_pwd) ? "%s.smbr" : "/var/tmp/%s.smbr",
-                        b[i+1]);
-                        create_mb(ext);
-                        /* create_mb shouldn't return */
-                        puts("failed to create mb");
-                        return 1;
+                        create = 1;
+                        cre_arg = i+1;
                   }
             }
+      }
+      if(create){
+            char ext[PATH_MAX] = {0};
+            snprintf(ext, PATH_MAX,
+            (strchr(b[cre_arg], '/') || lim_pwd) ? "%s.smbr" : "/var/tmp/%s.smbr",
+            b[cre_arg]);
+            create_mb(ext);
+            /* create_mb shouldn't return */
+            puts("failed to create mb");
+            return 1;
       }
       /* client mode */
       /* sc_dir first searhces /var/tmp and them /tmp
