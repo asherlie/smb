@@ -43,6 +43,12 @@ struct room_lst* room_lookup(struct rm_hash_lst rml, char* rm_name, int ref_no){
             return NULL;
       }
       int ind = *rm_name % rml.bux;
+      /* TODO: because indices are found using first letter hashed, room cannot
+       * be found when rm_name a substring of room->label but doesn't include 
+       * the first letter
+       * TODO: switch to ref_no based hashes
+       * THIS IS ANOTHER REASON TO SWITCH TO REF_NO HASHES
+       */
       if(!rml.rooms[ind])return NULL;
       for(struct room_lst* cur = rml.rooms[ind]; cur; cur = cur->next)
             /* TODO: substrings in the middle of cur->label should be searchable */

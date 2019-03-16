@@ -63,7 +63,6 @@ uid_t get_peer_cred(int p_sock){
 void* notify_pth(void* v_arg){
       log_f("notify_pth called");
       struct notif_arg* arg = (struct notif_arg*)v_arg;
-      uid_t s_cred;
 
       pthread_mutex_lock(&peer_mut); 
 
@@ -75,9 +74,7 @@ void* notify_pth(void* v_arg){
              * notification
              */
             log_f("sending credentials");
-            /* TODO: is this sendi!ng incorrect creds? */
-            s_cred = get_peer_cred(arg->socks[i]);
-            if(send(arg->socks[i], &s_cred, sizeof(uid_t), 0) <= 0){
+            if(send(arg->socks[i], &arg->sender, sizeof(uid_t), 0) <= 0){
                   arg->socks[i] = -1;
                   break;
             }
@@ -104,13 +101,14 @@ void* notify_pth(void* v_arg){
       return NULL;
 }
 
-_Bool spread_msg(int* peers, int n_peers, int ref_no, char* msg){
+_Bool spread_msg(int* peers, int n_peers, int ref_no, char* msg, uid_t sender_uid){
       struct notif_arg arg;
       arg.socks = peers;
       arg.n_peers = n_peers;
       arg.ref_no = ref_no;
       arg.msg_buf = msg;
       arg.msg_type = MSGTYPE_MSG;
+      arg.sender = sender_uid;
       memset(arg.msg, 0, 201);
 
       /* as of now, even if no meaningful data is being sent,
@@ -125,7 +123,7 @@ _Bool spread_msg(int* peers, int n_peers, int ref_no, char* msg){
       return !pthread_join(pth, NULL);
 }
 
-_Bool spread_thread_notif(int* peers, int n_peers, int ref_no, char* label){
+_Bool spread_thread_notif(int* peers, int n_peers, int ref_no, char* label, uid_t sender_uid){
       log_f("spread_thread_notif called");
       struct notif_arg arg;
       arg.socks = peers;
@@ -133,6 +131,7 @@ _Bool spread_thread_notif(int* peers, int n_peers, int ref_no, char* label){
       arg.ref_no = ref_no;
       arg.msg_buf = label;
       arg.msg_type = MSGTYPE_NOTIF;
+      arg.sender = sender_uid;
       memset(arg.msg, 0, 201);
       /* only 50 chars are used */
       strncpy(arg.msg, label, 50);
@@ -178,6 +177,8 @@ _Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock){
       arg.ref_no = ref_no;
       arg.msg_buf = 0;
       arg.msg_type = MSG_RNAME_UP_REQ;
+      /* unused for now - setting for consistency */
+      arg.sender = get_peer_cred(sender_sock);
       memset(arg.msg, 0, 201);
       /* only 50 chars are used */
 
@@ -205,6 +206,7 @@ _Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, struct rname_u
       arg.ref_no = ref_no;
       arg.msg_buf = label;
       arg.msg_type = MSG_RNAME_UP_INF;
+      arg.sender = get_peer_cred(sender_sock);
       memset(arg.msg, 0, 201);
       strncpy(arg.msg, label, 50);
 
@@ -235,12 +237,13 @@ int assign_ref_no(){
 /* TODO: add petition functionality!! */
 /* pea should be compatible with no alterations */
 _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
+      uid_t sender = get_peer_cred(sender_sock);
       switch(mb_type){
             case MSG_CREATE_THREAD:
                   log_f("room created with string:");
                   log_f(str_arg);
                   log_f("end_str");
-                  spread_thread_notif(peers, n_peers, assign_ref_no(), str_arg);
+                  spread_thread_notif(peers, n_peers, assign_ref_no(), str_arg, sender);
                   break;
             /* TODO: thread removal */
             case MSG_REMOVE_THREAD:
@@ -249,7 +252,7 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
                   log_f_int(ref_no);
                   break;
             case MSG_REPLY_THREAD:
-                  spread_msg(peers, n_peers, ref_no, str_arg);
+                  spread_msg(peers, n_peers, ref_no, str_arg, sender);
                   break;
             case MSG_RNAME_UP_REQ:
                   pass_rname_up_req(peers, n_peers, ref_no, sender_sock);
