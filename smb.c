@@ -75,20 +75,24 @@ int main(int a, char** b){
             p_usage(*b);
             return 1;
       }
-      for(int i = 1; i < a-1; ++i){
-            /* TODO: unless specified, write .smbr files to
-             * /var/tmp
-             */
-            if(*b[i] == '-' && b[i][1] == 'C'){
-                  /* b[i+1] will always exist */
-                  char ext[PATH_MAX] = {0};
-                  snprintf(ext, PATH_MAX,
-                  (strchr(b[i+1], '/')) ? "%s.smbr" : "/var/tmp/%s.smbr",
-                  b[i+1]);
-                  create_mb(ext);
-                  /* create_mb shouldn't return */
-                  puts("failed to create mb");
-                  return 1;
+      _Bool lim_pwd = 0;
+      for(int i = 1; i < a; ++i){
+            if(*b[i] == '-'){
+                  /* pwd mode */
+                  if(b[i][1] == 'p'){
+                        lim_pwd = 1;
+                        continue;
+                  }
+                  if(i < a-1 && b[i][1] == 'C'){
+                        char ext[PATH_MAX] = {0};
+                        snprintf(ext, PATH_MAX,
+                        (strchr(b[i+1], '/') || lim_pwd) ? "%s.smbr" : "/var/tmp/%s.smbr",
+                        b[i+1]);
+                        create_mb(ext);
+                        /* create_mb shouldn't return */
+                        puts("failed to create mb");
+                        return 1;
+                  }
             }
       }
       /* client mode */
@@ -96,8 +100,12 @@ int main(int a, char** b){
        * for board files matching sterm
        */
       char* board = sc_dir(".", b[1], 5, ".smbr");
-      if(!board)board = sc_dir("/var/tmp", b[1], 5, ".smbr");
       if(!board){
+            if(lim_pwd)goto failure;
+            board = sc_dir("/var/tmp", b[1], 5, ".smbr");
+      }
+      if(!board){
+            failure:
             printf("no board matching %s was found\n", b[1]);
             return 1;
       }
