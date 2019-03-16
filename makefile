@@ -7,7 +7,7 @@ db: $(CSRC)
 	$(CC) $(CFLAGS) $(CSRC) -DASH_DEBUG -g -o db
 
 rm:
-	rm /var/tmp/*.smbr
+	rm *.smbr /var/tmp/*.smbr /tmp/*.smbr
 
 clean:
 	rm -f smb db
