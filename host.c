@@ -257,6 +257,10 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
             case MSG_RNAME_UP_REQ:
                   pass_rname_up_req(peers, n_peers, ref_no, sender_sock);
                   break;
+            /* TODO: original creator should be passed along -
+             * as of now, it appears to the receiver that the
+             * passer is the creator of the room
+             */
             /* pass along room name to she who requested it */
             case MSG_RNAME_UP_INF:
                   /* sender sock is sender in this case */

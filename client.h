@@ -26,6 +26,7 @@ struct room_lst{
 };
 
 struct rm_hash_lst{
+      uid_t me;
       struct room_lst** rooms;
 
       /* n is used only to keep track of in_use */
