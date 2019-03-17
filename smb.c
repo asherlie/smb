@@ -65,11 +65,12 @@ char* sc_dir(char* path, char* sterm, int extlen, char* ext){
 }
 
 void p_usage(char* bname){
-      printf("usage:\n  %s {-[p]wd} -C [board_name] - creates a board with name [board_name]\n"
-                     "  %s {-[p]wd}    [board_path] - joins board at path [board_path]\n\n"
-                     "                                   if -pwd flag is set, the scope of smb's board\n"
-                     "                                   creation and searching is limited to the\n"
-                     "                                   current working directory\n",
+      printf("usage:\n  %s {-[a]ny} {-[p]wd} -C [board_name] - creates a board with name [board_name]\n"
+                     "  %s {-[a]ny} {-[p]wd}    [board_path] - joins board at path [board_path]\n"
+                  "                                            if board does not exist, it is created\n\n"
+                  "  if the -pwd flag is set, the scope of smb's board creation\n"
+                  "  and searching is limited to the current working directory\n\n"
+                  "  if the -any flag is set, the first board that is found will be joined\n",
       bname, bname);
 }
 
