@@ -409,8 +409,8 @@ _Bool client(char* sock_path){
             return 0;
       }
 
-      printf("%swelcome to **%s%s%s** %s\nenter \"/h\" for help at any time\n",
-      ANSI_BLU, ANSI_MGNTA, sock_path, ANSI_BLU, ANSI_NON);
+      printf("%shello, %s%i%s%s! welcome to **%s%s%s**\n%senter \"/h\" for help at any time\n",
+      ANSI_RED, ANSI_BLU, getuid(), ANSI_NON, ANSI_RED, ANSI_MGNTA, sock_path, ANSI_RED, ANSI_NON);
 
       struct rm_hash_lst rml = init_rm_hash_lst(100);
 
