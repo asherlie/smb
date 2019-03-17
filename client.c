@@ -404,7 +404,8 @@ _Bool client(char* sock_path){
       strncpy(r_addr.sun_path, sock_path, sizeof(r_addr.sun_path));
 
       if(connect(sock, (struct sockaddr*)&r_addr, sizeof(struct sockaddr_un)) == -1){
-            printf("failed to connect to host \"%s\"\n", sock_path);
+            /* failed to connect to host */
+            /* printf("failed to connect to host \"%s\"\n", sock_path); */
             return 0;
       }
 

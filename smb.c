@@ -115,14 +115,13 @@ int main(int a, char** b){
             char* board;
             if((board = sc_dir(".", any ? NULL : b[cre_arg], 5, ".smbr")) ||
                (board = sc_dir("/var/tmp", any ? NULL : b[cre_arg], 5, ".smbr")))
-                  /*if(!client(board))rm*/
-                  return !client(board);
+                  if(!client(board))remove(board);
       }
       if(cre_arg == -1){
             p_usage(*b);
             return 1;
       }
-      /* if we didn't find a matching board, we'll create it */
+      /* if we didn't find a matching board we'll create it */
       /* if we've gotten here, !board */
       char ext[PATH_MAX] = {0};
       snprintf(ext, PATH_MAX,
@@ -133,10 +132,3 @@ int main(int a, char** b){
       puts("failed to create mb");
       return 1;
 }
-#if 0
-boards should be able to be created just by ./smb board_name - if it doesn't exist, make it
-be the change you want to see in the world
-.smbr files should be removed automatically when a host cannot connect to it
-client() should try again on next available board after failing
-this will be possible bc .smbr files will be removed if invalid
-#endif
