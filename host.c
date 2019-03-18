@@ -423,7 +423,7 @@ _Bool create_mb(char* name, pid_t caller){
       signal(SIGKILL, ex_host);
       signal(SIGTERM, ex_host);
 
-      while(!ex)usleep(100);
+      while(!ex)usleep(100000);
       remove(name);
 
       /* this will keep host waiting indefinitely */
