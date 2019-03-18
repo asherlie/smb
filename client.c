@@ -317,6 +317,8 @@ void p_help(){
             "/[e]xit:\n"
             "/e[x]it:\n"
             "  exits current room\n"
+            "ctrl-c:\n"
+            "  exits this program\n"
       , ANSI_BLU, ANSI_NON);
 }
 

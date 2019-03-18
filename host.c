@@ -11,6 +11,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include <signal.h>
+
 int u_ref_no = 0;
 
 /* this function does nothing is ASH_DEBUG is not defined */
@@ -365,8 +367,14 @@ void* add_host_pth(void* local_sock_v){
       while(1)add_host(accept(sock, NULL, NULL));
 }
 
+
+volatile _Bool ex;
+/* signal handlers */
+void spin(int x){(void)x;}
+void ex_host(int x){(void)x; ex = 1;}
+
 /* creates an mb in the working directory */
-_Bool create_mb(char* name){
+_Bool create_mb(char* name, pid_t caller){
       /* checking for existence of socket */
       struct stat st;
       memset(&st, 0, sizeof(struct stat));
@@ -401,9 +409,26 @@ _Bool create_mb(char* name){
       pthread_t add_host_pth_pth;
       pthread_create(&add_host_pth_pth, NULL, &add_host_pth, &sock);
 
+      #ifndef ASH_DEBUG
+      /* ignore sigint */
+      signal(SIGINT, spin);
+      #else
+      signal(SIGINT, ex_host);
+      #endif
+
+      /* let the caller know that mb is ready to be joined */
+      kill(caller, SIGUSR1);
+
+      /* if this proc is killed, remove sock file */
+      signal(SIGKILL, ex_host);
+      signal(SIGTERM, ex_host);
+
+      while(!ex)usleep(100);
+      remove(name);
+
       /* this will keep host waiting indefinitely */
-      pthread_join(add_host_pth_pth, NULL);
-      // pthread_detach(add_host_pth_pth);
+      // pthread_join(add_host_pth_pth, NULL);
+      pthread_detach(add_host_pth_pth);
       
       return 1;
 }

@@ -4,6 +4,7 @@
 #include <string.h>
 #include <limits.h>
 #include <dirent.h>
+#include <signal.h>
 
 #include "host.h"
 #include "client.h"
@@ -74,6 +75,9 @@ void p_usage(char* bname){
       bname, bname);
 }
 
+volatile _Bool cli_ready = 0;
+void at_cli(int x){(void)x; cli_ready = 1;}
+
 int main(int a, char** b){
       _Bool lim_pwd = 0, create = 0, any = 0;
       int cre_arg = -1;
@@ -128,8 +132,23 @@ int main(int a, char** b){
       snprintf(ext, PATH_MAX,
       (strchr(b[cre_arg], '/') || lim_pwd) ? "%s.smbr" : "/var/tmp/%s.smbr",
       b[cre_arg]);
-      create_mb(ext);
-      /* create_mb shouldn't return */
-      puts("failed to create mb");
-      return 1;
+      pid_t caller = getpid();
+      pid_t pid = fork();
+      if(pid == 0){
+            create_mb(ext, caller);
+            /* create_mb shouldn't return */
+            return 1;
+      }
+      if(create)return 0;
+
+      signal(SIGUSR1, at_cli);
+
+      /* once we get the signal from create_mb, we can connect */
+      while(!cli_ready)usleep(100);
+
+      if(!client(ext)){
+            puts("client failed");
+            return 1;
+      }
+      return 0;
 }

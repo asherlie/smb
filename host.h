@@ -16,4 +16,4 @@ struct notif_arg{
       char msg[201];
 };
 
-_Bool create_mb(char* name);
+_Bool create_mb(char* name, pid_t caller);
