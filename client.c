@@ -237,6 +237,17 @@ int snd_rname_update(int rm_ref_no, char* rm_name, int sock){
       return send_mb_r(mb_a, sock);
 }
 
+struct room_lst* locate_user(struct rm_hash_lst* rml, uid_t user){
+      for(int i = 0; rml->in_use[i] != -1; ++i){
+            for(struct room_lst* rl = rml->rooms[rml->in_use[i]]; rl; rl = rl->next){
+                  for(int j = 0; j < rl->n_members; ++j){
+                        if(rl->members[j] == user)return rl;
+                  }
+            }
+      }
+      return NULL;
+}
+
 /* ~~~~~~~~~ communication end ~~~~~~~~~~~ */
 
 void rm_list_rem_peer(struct room_lst* rm, uid_t user){
@@ -295,6 +306,8 @@ void* read_notif_pth(void* rnp_arg_v){
                         rm_list_add_peer(cur_r, uid);
                         break;
                   case MSG_EXIT_NOTIF:
+                        /* this occurs when a peer disconnects */
+                        if(!*buf && ref_no == -1)
                         if(!(cur_r = room_lookup(*rnp_arg->rml, buf, ref_no)))break;
                         rm_list_rem_peer(cur_r, uid);
                         break;
