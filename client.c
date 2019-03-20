@@ -382,6 +382,7 @@ void set_cur_room(struct room_lst* old, struct room_lst* new, int sock){
 
 void* repl_pth(void* rnp_arg_v){
       struct read_notif_pth_arg* rnp_arg = (struct read_notif_pth_arg*)rnp_arg_v;
+      struct room_lst* tmp_rm;
 
       char* inp = NULL, * tmp_p;
       size_t sz = 0;
@@ -403,14 +404,18 @@ void* repl_pth(void* rnp_arg_v){
                         case 'r':
                               /* TODO: rooms should be joinable by ref_no */
                               if(!(tmp_p = strchr(inp, ' ')))break;
-                              cur_room = room_lookup(*rnp_arg->rml, tmp_p+1, -1);
-                              if(!cur_room)printf("%sno room containing \"%s\" was found%s\n", ANSI_RED, tmp_p+1, ANSI_NON);
-                              else printf("%scurrent room has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
+                              tmp_rm = room_lookup(*rnp_arg->rml, tmp_p+1, -1);
+                              if(!tmp_rm){
+                                    printf("%sno room containing \"%s\" was found%s\n", ANSI_RED, tmp_p+1, ANSI_NON);
+                                    break;
+                              }
+                              set_cur_room(cur_room, tmp_rm, rnp_arg->sock);
+                              printf("%scurrent room has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
                               break;
                         /* go to next room with same first character in label */
                         case 'n':
                               if(!cur_room || !cur_room->next)break;
-                              cur_room = cur_room->next;
+                              set_cur_room(cur_room, cur_room->next, rnp_arg->sock);
                               printf("%scurrent room has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
                               break;
                         case 'c':
@@ -441,7 +446,7 @@ void* repl_pth(void* rnp_arg_v){
                         case 'x':
                               if(!cur_room)break;
                               printf("%syou have left \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
-                              cur_room = NULL;
+                              set_cur_room(cur_room, NULL, rnp_arg->sock);
                               break;
                         case 'h':
                               p_help();
