@@ -51,10 +51,15 @@ struct room_lst* room_lookup(struct rm_hash_lst rml, char* rm_name, int ref_no){
        * THIS IS ANOTHER REASON TO SWITCH TO REF_NO HASHES
        */
       if(!rml.rooms[ind])return NULL;
+      struct room_lst* ret = NULL;
       for(struct room_lst* cur = rml.rooms[ind]; cur; cur = cur->next)
             /* TODO: substrings in the middle of cur->label should be searchable */
-            if(strstr(cur->label, rm_name))return cur;
-      return NULL;
+            /* TODO: ensure that ref_no matches */
+            if(strstr(cur->label, rm_name)){
+                  if(cur->ref_no == ref_no)return cur;
+                  ret = cur;
+            }
+      return ret;
 }
 
 /* return existence of ref_no */
@@ -69,6 +74,10 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
       if(!rml->rooms[ind]){
             cur = rml->rooms[ind] = (rl) ? rl : malloc(sizeof(struct room_lst));
             rml->in_use[rml->n++] = ind;
+
+            rml->rooms[ind]->n_members = 0;
+            rml->rooms[ind]->member_cap = 50;
+            rml->rooms[ind]->members = malloc(sizeof(uid_t)*rml->rooms[ind]->member_cap);
       }
       else{
             /* TODO: DON'T ITERATE THROUGH EVERYTHING - KEEP A PTR TO LAST */
@@ -220,6 +229,25 @@ int snd_rname_update(int rm_ref_no, char* rm_name, int sock){
 
 /* ~~~~~~~~~ communication end ~~~~~~~~~~~ */
 
+void rm_list_rem_peer(struct room_lst* rm, uid_t user){
+      int i;
+      for(i = 0; i < rm->n_members; ++i)
+            if(rm->members[i] == user)
+      if(i == rm->n_members)return;
+      memmove(rm->members+i, rm->members+i+1, --rm->n_members-i);
+}
+
+void rm_list_add_peer(struct room_lst* rm, uid_t user){
+      if(rm->n_members == rm->member_cap){
+            rm->member_cap *= 2;
+            uid_t* tmp_mem = malloc(sizeof(uid_t)*rm->member_cap);
+            memcpy(tmp_mem, rm->members, sizeof(uid_t)*rm->n_members);
+            free(rm->members);
+            rm->members = tmp_mem;
+      }
+      rm->members[rm->n_members++] = user;
+}
+
 /* four reads are executed each iteration:
  *    1: uid_t sender
  *    2: int   msg_type
@@ -252,6 +280,14 @@ void* read_notif_pth(void* rnp_arg_v){
 
             /* if we've received a msgtype_notif, add room */
             switch(msg_type){
+                  case MSG_JOIN_NOTIF:
+                        if(!(cur_r = room_lookup(*rnp_arg->rml, buf, ref_no)))break;
+                        rm_list_add_peer(cur_r, uid);
+                        break;
+                  case MSG_EXIT_NOTIF:
+                        if(!(cur_r = room_lookup(*rnp_arg->rml, buf, ref_no)))break;
+                        rm_list_rem_peer(cur_r, uid);
+                        break;
                   case MSGTYPE_NOTIF:
                         add_room_rml(rnp_arg->rml, ref_no, buf, uid, NULL);
                         printf("%s%i%s: %s[ROOM_CREATE %s]%s\n",
