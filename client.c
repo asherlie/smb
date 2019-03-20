@@ -201,6 +201,16 @@ int create_room(char* rm_name, int sock){
       return send_mb_r(mb_a, sock);
 }
 
+/* if join, toggle_room sends MSG_JOIN_NOTIF, otherwise, MSG_EXIT_NOTIF */
+int toggle_room(_Bool join, char* rm_name, int rm_ref_no, int sock){
+      struct mb_msg mb_a;
+      mb_a.mb_inf[0] = (join) ? MSG_JOIN_NOTIF : MSG_EXIT_NOTIF;
+      mb_a.mb_inf[1] = rm_ref_no;
+      memset(mb_a.str_arg, 0, 201);
+      strncpy(mb_a.str_arg, rm_name, 200);
+      return send_mb_r(mb_a, sock);
+}
+
 int reply_room(int rm_ref_no, char* msg, int sock){
       struct mb_msg mb_a;
       mb_a.mb_inf[0] = MSG_REPLY_THREAD;
@@ -356,6 +366,18 @@ void p_help(){
             "ctrl-c:\n"
             "  exits this program\n"
       , ANSI_BLU, ANSI_NON);
+}
+
+/* switches current room from old to new 
+ * NULL can be passed safely to either old
+ * or new
+ */
+void set_cur_room(struct room_lst* old, struct room_lst* new, int sock){
+      if(!old && !new)return;
+      if(old)toggle_room(0, old->label, old->ref_no, sock);
+
+      cur_room = new;
+      toggle_room(1, new->label, new->ref_no, sock);
 }
 
 void* repl_pth(void* rnp_arg_v){
