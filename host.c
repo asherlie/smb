@@ -125,18 +125,19 @@ _Bool spread_msg(int* peers, int n_peers, int ref_no, char* msg, uid_t sender_ui
       return !pthread_join(pth, NULL);
 }
 
-_Bool spread_thread_notif(int* peers, int n_peers, int ref_no, char* label, uid_t sender_uid){
-      log_f("spread_thread_notif called");
+_Bool spread_notif(int notif_type, int* peers, int n_peers,
+                   int ref_no, char* label, uid_t sender_uid){
+      log_f("spread_notif called");
       struct notif_arg arg;
       arg.socks = peers;
       arg.n_peers = n_peers;
       arg.ref_no = ref_no;
       arg.msg_buf = label;
-      arg.msg_type = MSGTYPE_NOTIF;
+      arg.msg_type = notif_type;
       arg.sender = sender_uid;
       memset(arg.msg, 0, 201);
       /* only 50 chars are used */
-      strncpy(arg.msg, label, 50);
+      if(arg.msg_buf)strncpy(arg.msg, label, 50);
 
       /* TODO: this doesn't need to occur in a separate thread */
       pthread_t pth;
@@ -241,11 +242,17 @@ int assign_ref_no(){
 _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
       uid_t sender = get_peer_cred(sender_sock);
       switch(mb_type){
+            case MSG_JOIN_NOTIF:
+                  spread_notif(MSG_JOIN_NOTIF, peers, n_peers, assign_ref_no(), str_arg, sender);
+                  break;
+            case MSG_EXIT_NOTIF:
+                  spread_notif(MSG_EXIT_NOTIF, peers, n_peers, assign_ref_no(), str_arg, sender);
+                  break;
             case MSG_CREATE_THREAD:
                   log_f("room created with string:");
                   log_f(str_arg);
                   log_f("end_str");
-                  spread_thread_notif(peers, n_peers, assign_ref_no(), str_arg, sender);
+                  spread_notif(MSGTYPE_NOTIF, peers, n_peers, assign_ref_no(), str_arg, sender);
                   break;
             /* TODO: thread removal */
             case MSG_REMOVE_THREAD:
