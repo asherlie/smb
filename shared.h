@@ -14,9 +14,6 @@
 #define MSG_RNAME_UP_REQ  5
 #define MSG_RNAME_UP_INF  6
 
-#define MSG_JOIN_NOTIF    7
-#define MSG_EXIT_NOTIF    8
-
 #define ANSI_RED   "\x1B[31m"
 #define ANSI_NON   "\x1b[0m"
 #define ANSI_GRE   "\x1b[32m"
