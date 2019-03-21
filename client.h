@@ -10,10 +10,6 @@ struct room_lst{
       uid_t creator;
       int ref_no, n_msg, msg_queue_cap;
 
-      /* members in room */
-      uid_t* members;
-      int n_members, member_cap;
-
       char label[50];
 
       /* base ptr is stored for reallocs since offset is changed 
