@@ -396,7 +396,7 @@ int create_mb(char* name){
       struct sockaddr_un addr;
       memset(&addr, 0, sizeof(struct sockaddr_un));
       addr.sun_family = AF_UNIX;
-      strncpy(addr.sun_path, name, sizeof(addr.sun_path));
+      strncpy(addr.sun_path, name, sizeof(addr.sun_path)-1);
 
       if(bind(sock, (struct sockaddr*)&addr, SUN_LEN(&addr)) == -1
       || listen(sock, 0) == -1)return 0;

@@ -181,7 +181,11 @@ _Bool pop_msg_queue(struct room_lst* rm, char* msg, uid_t* sender){
       pthread_mutex_lock(&rm->room_msg_queue_lck);
       if(rm->n_msg){
             *sender = rm->msg_queue->sender;
-            strncpy(msg, rm->msg_queue->msg, 200);
+            #pragma GCC diagnostic push
+            #pragma GCC diagnostic ignored "-Wstringop-truncation"
+            /* if our char* is truncated by 1 byte, so be it */
+            strncpy(msg, rm->msg_queue->msg, 199);
+            #pragma GCC diagnostic pop
             ++rm->msg_queue; ++rm->msg_queue_cap; --rm->n_msg;
             ret = 1;
       }
@@ -433,7 +437,7 @@ _Bool client(char* sock_path){
       struct sockaddr_un r_addr;
       memset(&r_addr, 0, sizeof(struct sockaddr_un));
       r_addr.sun_family = AF_UNIX;
-      strncpy(r_addr.sun_path, sock_path, sizeof(r_addr.sun_path));
+      strncpy(r_addr.sun_path, sock_path, sizeof(r_addr.sun_path)-1);
 
       if(connect(sock, (struct sockaddr*)&r_addr, sizeof(struct sockaddr_un)) == -1)
             /* failed to connect to host */
