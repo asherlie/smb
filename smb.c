@@ -131,7 +131,7 @@ int main(int a, char** b){
       snprintf(ext, PATH_MAX,
       (strchr(b[cre_arg], '/') || lim_pwd) ? "%s.smbr" : "/var/tmp/%s.smbr",
       b[cre_arg]);
-      /* create_mb returns two from client process */
+      /* create_mb returns 2 from client process */
       if(create_mb(ext) == 2){
             if(create)return 0;
 

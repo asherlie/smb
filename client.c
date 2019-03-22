@@ -36,7 +36,10 @@ void free_rm_hash_lst(struct rm_hash_lst rml){
       for(int i = 0; rml.in_use[i] != -1; ++i){
             for(struct room_lst* cur = (prev = rml.rooms[rml.in_use[i]])->next; cur;
                 cur = cur->next){
+                  pthread_mutex_lock(&prev->room_msg_queue_lck);
                   free(prev);
+                  /* TODO: is it UB to destroy a locked mut_lock? */
+                  pthread_mutex_destroy(&prev->room_msg_queue_lck);
                   prev = cur;
             }
       }
@@ -453,10 +456,16 @@ _Bool client(char* sock_path){
 
       pthread_t read_notif_pth_pth, repl_pth_pth;
       /* TODO: fix possible synch issues from sharing rnpa.rml */
+      /* there should be an rml mutex lock - activated each time a 
+       * room is added, in_use is edited, or room_lookup is called
+       */
       pthread_create(&read_notif_pth_pth, NULL, &read_notif_pth, &rnpa);
       pthread_create(&repl_pth_pth, NULL, &repl_pth, &rnpa);
 
-      /* doesn't need to be memset(*, 0, *)'d - this is handled by insert_msg_msg_queue */
+      pthread_detach(read_notif_pth_pth);
+      pthread_detach(repl_pth_pth);
+
+      /* doesn't need to be memset(*, 0, **)'d - this is handled by insert_msg_msg_queue */
       char tmp_p[201];
       uid_t s_uid;
 
