@@ -23,11 +23,6 @@ struct rm_hash_lst init_rm_hash_lst(int buckets){
       rml.rooms = calloc(rml.bux, sizeof(struct room_lst));
       rml.in_use = malloc(sizeof(int)*(rml.bux+1));
       memset(rml.in_use, -1, sizeof(int)*(rml.bux+1));
-
-      /*
-       *pthread_t pth;
-       *pthread_create(&pth, NULL, &read_notif_pth, &);
-       */
       return rml;
 }
 
@@ -185,8 +180,8 @@ _Bool pop_msg_queue(struct room_lst* rm, char* msg, uid_t* sender){
       _Bool ret = 0;
       pthread_mutex_lock(&rm->room_msg_queue_lck);
       if(rm->n_msg){
-            *sender = (*rm->msg_queue).sender;
-            strncpy(msg, (*rm->msg_queue).msg, 200);
+            *sender = rm->msg_queue->sender;
+            strncpy(msg, rm->msg_queue->msg, 200);
             ++rm->msg_queue; ++rm->msg_queue_cap; --rm->n_msg;
             ret = 1;
       }
