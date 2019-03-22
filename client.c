@@ -10,6 +10,8 @@
 #include "client.h"
 #include "shared.h"
 
+#include <signal.h>
+
 struct room_lst* cur_room;
 
 struct rm_hash_lst init_rm_hash_lst(int buckets){
