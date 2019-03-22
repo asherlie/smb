@@ -116,8 +116,10 @@ int main(int a, char** b){
       if(!create){
             char* board;
             if((board = sc_dir(".", any ? NULL : b[cre_arg], 5, ".smbr")) ||
-               (board = sc_dir("/var/tmp", any ? NULL : b[cre_arg], 5, ".smbr")))
+               (board = sc_dir("/var/tmp", any ? NULL : b[cre_arg], 5, ".smbr"))){
                   if(!client(board))remove(board);
+                  else return 0;
+            }
       }
       if(cre_arg == -1){
             p_usage(*b);
@@ -136,7 +138,7 @@ int main(int a, char** b){
             usleep(10000);
             if(!client(ext))
                   printf("could not start client on %s\n", ext);
-            return 1;
+            else return 0;
       }
       return 1;
 }

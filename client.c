@@ -29,6 +29,19 @@ struct rm_hash_lst init_rm_hash_lst(int buckets){
       return rml;
 }
 
+void free_rm_hash_lst(struct rm_hash_lst rml){
+      struct room_lst* prev;
+      for(int i = 0; rml.in_use[i] != -1; ++i){
+            for(struct room_lst* cur = (prev = rml.rooms[rml.in_use[i]])->next; cur;
+                cur = cur->next){
+                  free(prev);
+                  prev = cur;
+            }
+      }
+      free(rml.rooms);
+      free(rml.in_use);
+}
+
 /* looks up a thread by its label or ref_no 
  * if both are provided, label is hashed
  * for lookup
@@ -409,6 +422,9 @@ void* repl_pth(void* rnp_arg_v){
       return NULL;
 }
 
+volatile _Bool run = 1;
+void ex(int x){(void)x; run = 0;}
+
 _Bool client(char* sock_path){
       cur_room = NULL;
       int sock = listen_sock();
@@ -442,10 +458,14 @@ _Bool client(char* sock_path){
       char tmp_p[201];
       uid_t s_uid;
 
-      while(1){
+      signal(SIGINT, ex);
+
+      while(run){
             // pop_msg_queue
             // if(cur_room && (tmp_p = pop_msg_queue(cur_room)))puts(tmp_p);
             if(cur_room && pop_msg_queue(cur_room, tmp_p, &s_uid))printf("%s%i%s: %s\n", ANSI_GRE, s_uid, ANSI_NON, tmp_p);
             usleep(1000);
       }
+      free_rm_hash_lst(rml);
+      return 1;
 }
