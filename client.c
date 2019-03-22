@@ -74,10 +74,6 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
       if(!rml->rooms[ind]){
             cur = rml->rooms[ind] = (rl) ? rl : malloc(sizeof(struct room_lst));
             rml->in_use[rml->n++] = ind;
-
-            rml->rooms[ind]->n_members = 0;
-            rml->rooms[ind]->member_cap = 50;
-            rml->rooms[ind]->members = malloc(sizeof(uid_t)*rml->rooms[ind]->member_cap);
       }
       else{
             /* TODO: DON'T ITERATE THROUGH EVERYTHING - KEEP A PTR TO LAST */
@@ -201,16 +197,6 @@ int create_room(char* rm_name, int sock){
       return send_mb_r(mb_a, sock);
 }
 
-/* if join, toggle_room sends MSG_JOIN_NOTIF, otherwise, MSG_EXIT_NOTIF */
-int toggle_room(_Bool join, char* rm_name, int rm_ref_no, int sock){
-      struct mb_msg mb_a;
-      mb_a.mb_inf[0] = (join) ? MSG_JOIN_NOTIF : MSG_EXIT_NOTIF;
-      mb_a.mb_inf[1] = rm_ref_no;
-      memset(mb_a.str_arg, 0, 201);
-      strncpy(mb_a.str_arg, rm_name, 200);
-      return send_mb_r(mb_a, sock);
-}
-
 int reply_room(int rm_ref_no, char* msg, int sock){
       struct mb_msg mb_a;
       mb_a.mb_inf[0] = MSG_REPLY_THREAD;
@@ -237,37 +223,7 @@ int snd_rname_update(int rm_ref_no, char* rm_name, int sock){
       return send_mb_r(mb_a, sock);
 }
 
-struct room_lst* locate_user(struct rm_hash_lst* rml, uid_t user){
-      for(int i = 0; rml->in_use[i] != -1; ++i){
-            for(struct room_lst* rl = rml->rooms[rml->in_use[i]]; rl; rl = rl->next){
-                  for(int j = 0; j < rl->n_members; ++j){
-                        if(rl->members[j] == user)return rl;
-                  }
-            }
-      }
-      return NULL;
-}
-
 /* ~~~~~~~~~ communication end ~~~~~~~~~~~ */
-
-void rm_list_rem_peer(struct room_lst* rm, uid_t user){
-      int i;
-      for(i = 0; i < rm->n_members; ++i)
-            if(rm->members[i] == user)
-      if(i == rm->n_members)return;
-      memmove(rm->members+i, rm->members+i+1, --rm->n_members-i);
-}
-
-void rm_list_add_peer(struct room_lst* rm, uid_t user){
-      if(rm->n_members == rm->member_cap){
-            rm->member_cap *= 2;
-            uid_t* tmp_mem = malloc(sizeof(uid_t)*rm->member_cap);
-            memcpy(tmp_mem, rm->members, sizeof(uid_t)*rm->n_members);
-            free(rm->members);
-            rm->members = tmp_mem;
-      }
-      rm->members[rm->n_members++] = user;
-}
 
 /* four reads are executed each iteration:
  *    1: uid_t sender
@@ -301,16 +257,6 @@ void* read_notif_pth(void* rnp_arg_v){
 
             /* if we've received a msgtype_notif, add room */
             switch(msg_type){
-                  case MSG_JOIN_NOTIF:
-                        if(!(cur_r = room_lookup(*rnp_arg->rml, buf, ref_no)))break;
-                        rm_list_add_peer(cur_r, uid);
-                        break;
-                  case MSG_EXIT_NOTIF:
-                        /* this occurs when a peer disconnects */
-                        if(!*buf && ref_no == -1)
-                        if(!(cur_r = room_lookup(*rnp_arg->rml, buf, ref_no)))break;
-                        rm_list_rem_peer(cur_r, uid);
-                        break;
                   case MSGTYPE_NOTIF:
                         add_room_rml(rnp_arg->rml, ref_no, buf, uid, NULL);
                         printf("%s%i%s: %s[ROOM_CREATE %s]%s\n",
@@ -381,18 +327,6 @@ void p_help(){
       , ANSI_BLU, ANSI_NON);
 }
 
-/* switches current room from old to new 
- * NULL can be passed safely to either old
- * or new
- */
-void set_cur_room(struct room_lst* old, struct room_lst* new, int sock){
-      if(!old && !new)return;
-      if(old)toggle_room(0, old->label, old->ref_no, sock);
-
-      cur_room = new;
-      toggle_room(1, new->label, new->ref_no, sock);
-}
-
 void* repl_pth(void* rnp_arg_v){
       struct read_notif_pth_arg* rnp_arg = (struct read_notif_pth_arg*)rnp_arg_v;
       struct room_lst* tmp_rm;
@@ -422,13 +356,13 @@ void* repl_pth(void* rnp_arg_v){
                                     printf("%sno room containing \"%s\" was found%s\n", ANSI_RED, tmp_p+1, ANSI_NON);
                                     break;
                               }
-                              set_cur_room(cur_room, tmp_rm, rnp_arg->sock);
+                              cur_room = tmp_rm;
                               printf("%scurrent room has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
                               break;
                         /* go to next room with same first character in label */
                         case 'n':
                               if(!cur_room || !cur_room->next)break;
-                              set_cur_room(cur_room, cur_room->next, rnp_arg->sock);
+                              cur_room = cur_room->next;
                               printf("%scurrent room has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
                               break;
                         case 'c':
@@ -459,7 +393,7 @@ void* repl_pth(void* rnp_arg_v){
                         case 'x':
                               if(!cur_room)break;
                               printf("%syou have left \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
-                              set_cur_room(cur_room, NULL, rnp_arg->sock);
+                              cur_room = NULL;
                               break;
                         case 'h':
                               p_help();

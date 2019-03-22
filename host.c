@@ -242,12 +242,6 @@ int assign_ref_no(){
 _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
       uid_t sender = get_peer_cred(sender_sock);
       switch(mb_type){
-            case MSG_JOIN_NOTIF:
-                  spread_notif(MSG_JOIN_NOTIF, peers, n_peers, ref_no, str_arg, sender);
-                  break;
-            case MSG_EXIT_NOTIF:
-                  spread_notif(MSG_EXIT_NOTIF, peers, n_peers, ref_no, str_arg, sender);
-                  break;
             case MSG_CREATE_THREAD:
                   log_f("room created with string:");
                   log_f(str_arg);
@@ -302,8 +296,6 @@ void* read_cl_pth(void* peer_sock_v){
       int* peer_sock = ((int*)peer_sock_v);
       int mb_inf[2] = {-1, -1}; char str_buf[201];
 
-      int p_uid = get_peer_cred(*peer_sock);
-
       while(*peer_sock >= 0){
             memset(str_buf, 0, 201);
             /* TODO: should be locking peer_mut but
@@ -335,8 +327,8 @@ void* read_cl_pth(void* peer_sock_v){
       /* EXPERIMENTAL FEATURE */
       /* if all peers have disconnected, u_ref_no and peers are reset */
       /* i'm hesitant to access peers from here but... */
-      pthread_mutex_lock(&peer_mut);
       _Bool reinit = 1;
+      pthread_mutex_lock(&peer_mut);
       for(int i = 0; i < n_peers; ++i)
             if(peers[i] >= 0){
                   reinit = 0;
@@ -347,7 +339,6 @@ void* read_cl_pth(void* peer_sock_v){
             init_peers(0);
             u_ref_no = 0;
       }
-      else spread_notif(MSG_EXIT_NOTIF, peers, n_peers, -1, NULL, p_uid);
       pthread_mutex_unlock(&peer_mut);
       return NULL;
 }
