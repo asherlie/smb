@@ -75,8 +75,13 @@ void p_usage(char* bname){
       bname, bname);
 }
 
-volatile _Bool cli_ready = 0;
-void at_cli(int x){(void)x; cli_ready = 1;}
+char* cli_pth = NULL;
+
+void at_cli(int x){
+      (void)x;
+      if(!client(cli_pth))
+            remove(cli_pth);
+}
 
 int main(int a, char** b){
       _Bool lim_pwd = 0, create = 0, any = 0;
@@ -141,14 +146,13 @@ int main(int a, char** b){
       }
       if(create)return 0;
 
+      cli_pth = ext;
+
       signal(SIGUSR1, at_cli);
 
       /* once we get the signal from create_mb, we can connect */
-      while(!cli_ready)usleep(100);
+      sleep(5);
 
-      if(!client(ext)){
-            puts("client failed");
-            return 1;
-      }
-      return 0;
+      puts("could not start client");
+      return 1;
 }

@@ -419,11 +419,10 @@ _Bool client(char* sock_path){
       r_addr.sun_family = AF_UNIX;
       strncpy(r_addr.sun_path, sock_path, sizeof(r_addr.sun_path));
 
-      if(connect(sock, (struct sockaddr*)&r_addr, sizeof(struct sockaddr_un)) == -1){
+      if(connect(sock, (struct sockaddr*)&r_addr, sizeof(struct sockaddr_un)) == -1)
             /* failed to connect to host */
             /* printf("failed to connect to host \"%s\"\n", sock_path); */
             return 0;
-      }
 
       printf("%shello, %s%i%s%s! welcome to **%s%s%s**\n%senter \"/h\" for help at any time\n",
       ANSI_RED, ANSI_BLU, getuid(), ANSI_NON, ANSI_RED, ANSI_MGNTA, sock_path, ANSI_RED, ANSI_NON);
