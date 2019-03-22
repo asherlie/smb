@@ -466,7 +466,7 @@ _Bool client(char* sock_path){
             // pop_msg_queue
             // if(cur_room && (tmp_p = pop_msg_queue(cur_room)))puts(tmp_p);
             if(cur_room && pop_msg_queue(cur_room, tmp_p, &s_uid))printf("%s%i%s: %s\n", ANSI_GRE, s_uid, ANSI_NON, tmp_p);
-            usleep(1000);
+            usleep(10000);
       }
       free_rm_hash_lst(rml);
       return 1;
