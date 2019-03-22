@@ -368,14 +368,11 @@ void* add_host_pth(void* local_sock_v){
       while(1)add_host(accept(sock, NULL, NULL));
 }
 
-
-volatile _Bool ex;
-/* signal handlers */
+/* signal handler */
 void spin(int x){(void)x;}
-void ex_host(int x){(void)x; ex = 1;}
 
 /* creates an mb in the working directory */
-_Bool create_mb(char* name, pid_t caller){
+int create_mb(char* name){
       /* checking for existence of socket */
       struct stat st;
       memset(&st, 0, sizeof(struct stat));
@@ -389,7 +386,8 @@ _Bool create_mb(char* name, pid_t caller){
       pid_t pid = fork();
       if(pid > 0){
             printf("mb spawned at pid: %i\n", pid);
-            exit(EXIT_SUCCESS);
+            return 2;
+            /*exit(EXIT_SUCCESS);*/
       }
       #endif
       int sock = listen_sock();
@@ -409,27 +407,22 @@ _Bool create_mb(char* name, pid_t caller){
       /* TODO: find way to safely detach/stop thread */
       pthread_t add_host_pth_pth;
       pthread_create(&add_host_pth_pth, NULL, &add_host_pth, &sock);
+      pthread_detach(add_host_pth_pth);
 
       #ifndef ASH_DEBUG
-      /* ignore sigint */
+      /* if we're in debug mode, ctrl-c should kill host */
       signal(SIGINT, spin);
-      #else
-      signal(SIGINT, ex_host);
       #endif
 
-      /* let the caller know that mb is ready to be joined */
-      kill(caller, SIGUSR1);
+      unsigned int rem = 432000;
+      /* sleep for 5 days */
+      /* sleep() returns remaining sleep time if interrupted */
+      while((rem = sleep(rem)));
 
-      /* if this proc is killed, remove sock file */
-      signal(SIGKILL, ex_host);
-      signal(SIGTERM, ex_host);
-
-      while(!ex)usleep(100000);
       remove(name);
 
       /* this will keep host waiting indefinitely */
       // pthread_join(add_host_pth_pth, NULL);
-      pthread_detach(add_host_pth_pth);
       
       return 1;
 }

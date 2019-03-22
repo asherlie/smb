@@ -75,14 +75,6 @@ void p_usage(char* bname){
       bname, bname);
 }
 
-char* cli_pth = NULL;
-
-void at_cli(int x){
-      (void)x;
-      if(!client(cli_pth))
-            remove(cli_pth);
-}
-
 int main(int a, char** b){
       _Bool lim_pwd = 0, create = 0, any = 0;
       int cre_arg = -1;
@@ -137,22 +129,14 @@ int main(int a, char** b){
       snprintf(ext, PATH_MAX,
       (strchr(b[cre_arg], '/') || lim_pwd) ? "%s.smbr" : "/var/tmp/%s.smbr",
       b[cre_arg]);
-      pid_t caller = getpid();
-      pid_t pid = fork();
-      if(pid == 0){
-            create_mb(ext, caller);
-            /* create_mb shouldn't return */
+      /* create_mb returns two from client process */
+      if(create_mb(ext) == 2){
+            if(create)return 0;
+
+            usleep(10000);
+            if(!client(ext))
+                  printf("could not start client on %s\n", ext);
             return 1;
       }
-      if(create)return 0;
-
-      cli_pth = ext;
-
-      signal(SIGUSR1, at_cli);
-
-      /* once we get the signal from create_mb, we can connect */
-      sleep(5);
-
-      puts("could not start client");
       return 1;
 }
