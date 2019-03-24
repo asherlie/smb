@@ -326,10 +326,10 @@ void* read_notif_pth(void* rnp_arg_v){
                         /* TODO: should /l print number of members */
                         if(!rnp_arg->n_mem_req)break;
                         rnp_arg->n_mem_req = 0;
-                        printf("%s%i%s members are connected to %s**%s%s%s**%s\n",
+                        printf("%s%i%s member%s connected to %s**%s%s%s**%s\n",
                         /* n_members are sent in the ref_no buf */
-                        ANSI_RED, ref_no, ANSI_MGNTA, ANSI_RED, ANSI_MGNTA,
-                        rnp_arg->rml->board_path, ANSI_RED, ANSI_NON);
+                        ANSI_RED, ref_no, ANSI_MGNTA, (ref_no > 1) ? "s are" : " is",
+                        ANSI_RED, ANSI_MGNTA, rnp_arg->rml->board_path, ANSI_RED, ANSI_NON);
                         break;
             }
       }
