@@ -326,7 +326,9 @@ void* read_notif_pth(void* rnp_arg_v){
                         if(!rnp_arg->n_mem_req)break;
                         rnp_arg->n_mem_req = 0;
                         n_members = ref_no;
-                        printf("%s%i%s members are connected%s\n", ANSI_RED, n_members, ANSI_MGNTA, ANSI_NON);
+                        printf("%s%i%s members are connected to %s**%s%s%s**%s\n",
+                        ANSI_RED, n_members, ANSI_MGNTA, ANSI_RED, ANSI_MGNTA,
+                        rnp_arg->rml->board_path, ANSI_RED ,ANSI_NON);
                         break;
             }
       }
@@ -473,6 +475,7 @@ _Bool client(char* sock_path){
       struct read_notif_pth_arg rnpa;
       rnpa.sock = sock;
       rnpa.rml = &rml;
+      strncpy(rnpa.rml->board_path, sock_path, PATH_MAX);
 
       pthread_t read_notif_pth_pth, repl_pth_pth;
       /* TODO: fix possible synch issues from sharing rnpa.rml */

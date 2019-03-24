@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <pthread.h>
 
 struct msg_queue_entry{
@@ -28,6 +29,7 @@ struct room_lst{
 
 struct rm_hash_lst{
       uid_t me;
+      char board_path[PATH_MAX+1];
       struct room_lst** rooms;
 
       /* n is used only to keep track of in_use */
