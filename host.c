@@ -401,7 +401,7 @@ void spin(int x){(void)x;}
 
 /* creates an mb in the working directory that will exist for duration_hrs */
 /* if duration_hrs <= 0, board will exist for 5 days */
-int create_mb(char* name, unsigned int duration_hrs){
+int create_mb(char* name, int duration_hrs){
       /* checking for existence of socket */
       struct stat st;
       memset(&st, 0, sizeof(struct stat));
@@ -411,12 +411,15 @@ int create_mb(char* name, unsigned int duration_hrs){
             return 0;
       }
       
-      {int days = duration_hrs/24;
-      int hours = duration_hrs-(days*24);
+      /* if unspecified, sleep for 5 days */
+      unsigned int duration_adj = (duration_hrs > 0) ? duration_hrs : 120;
+
+      {int days = duration_adj/24;
+      int hours = duration_adj-(days*24);
       printf("%s[BOARD_CREATE %s] %sDURATION (d:h:m): %s%i:%i:%i%s\n",
       ANSI_RED, name, ANSI_MGNTA, ANSI_BLU, days,
       hours, 0, ANSI_NON);}
-      
+
       #ifndef ASH_DEBUG
       pid_t pid = fork();
       if(pid > 0){
@@ -449,10 +452,11 @@ int create_mb(char* name, unsigned int duration_hrs){
       signal(SIGINT, spin);
       #endif
 
-      /* if unspecified, sleep for 5 days */
-      unsigned int rem = (duration_hrs > 0) ? 3600*duration_hrs : 432000;
+      /* convert duration_adj to seconds for sleep() */
+      duration_adj *= 3600;
+      
       /* sleep() returns remaining sleep time if interrupted */
-      while((rem = sleep(rem)));
+      while((duration_adj = sleep(duration_adj)));
 
       remove(name);
 
