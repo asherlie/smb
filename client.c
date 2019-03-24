@@ -322,6 +322,8 @@ void* read_notif_pth(void* rnp_arg_v){
                               ANSI_GRE, cur_r->creator, ANSI_NON, ANSI_RED, buf, ANSI_NON);
                         break;
                   case MSG_N_MEM_INF:
+                        /* TODO: should rml have a member for n_mems? */
+                        /* TODO: should /l print number of members */
                         if(!rnp_arg->n_mem_req)break;
                         rnp_arg->n_mem_req = 0;
                         printf("%s%i%s members are connected to %s**%s%s%s**%s\n",
@@ -352,6 +354,9 @@ void p_help(){
             "  lists all rooms, current room will be %sblue%s\n"
             "/[w]hich:\n"
             "  prints current room name and reference number\n"
+            "/[u]ser:\n"
+            "/[#]:\n"
+            "  prints number of users in current board\n"
             "/[e]xit:\n"
             "/e[x]it:\n"
             "  exits current room\n"
@@ -370,6 +375,7 @@ void* repl_pth(void* rnp_arg_v){
 
       while((b_read = getline(&inp, &sz, stdin)) != EOF){
             inp[--b_read] = 0;
+
             if(*inp == '/' && b_read > 1){
                   switch(inp[1]){
                         #ifdef ASH_DEBUG

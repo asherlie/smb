@@ -399,8 +399,9 @@ void* add_host_pth(void* local_sock_v){
 /* signal handler */
 void spin(int x){(void)x;}
 
-/* creates an mb in the working directory */
-int create_mb(char* name){
+/* creates an mb in the working directory that will exist for duration_hrs */
+/* if duration_hrs <= 0, board will exist for 5 days */
+int create_mb(char* name, unsigned int duration_hrs){
       /* checking for existence of socket */
       struct stat st;
       memset(&st, 0, sizeof(struct stat));
@@ -409,7 +410,13 @@ int create_mb(char* name){
             printf("mb: \"%s\" already exists\n", name);
             return 0;
       }
-      printf("%s[BOARD_CREATE %s]%s\n", ANSI_RED, name, ANSI_NON);
+      
+      {int days = duration_hrs/24;
+      int hours = duration_hrs-(days*24);
+      printf("%s[BOARD_CREATE %s] %sDURATION (d:h:m): %s%i:%i:%i%s\n",
+      ANSI_RED, name, ANSI_MGNTA, ANSI_BLU, days,
+      hours, 0, ANSI_NON);}
+      
       #ifndef ASH_DEBUG
       pid_t pid = fork();
       if(pid > 0){
@@ -442,8 +449,8 @@ int create_mb(char* name){
       signal(SIGINT, spin);
       #endif
 
-      unsigned int rem = 432000;
-      /* sleep for 5 days */
+      /* if unspecified, sleep for 5 days */
+      unsigned int rem = (duration_hrs > 0) ? 3600*duration_hrs : 432000;
       /* sleep() returns remaining sleep time if interrupted */
       while((rem = sleep(rem)));
 

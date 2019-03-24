@@ -16,4 +16,4 @@ struct notif_arg{
       char msg[201];
 };
 
-int create_mb(char* name);
+int create_mb(char* name, unsigned int duration_hrs);
