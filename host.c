@@ -62,9 +62,11 @@ uid_t get_peer_cred(int p_sock){
 
 /* TODO: this doesn't need its own thread */
 /* arg->socks will be maintained in the host loop @ create_mb */
+/* v_arg->retval is set to 0 upon success, -1 otherwise */
 void* notify_pth(void* v_arg){
       log_f("notify_pth called");
       struct notif_arg* arg = (struct notif_arg*)v_arg;
+      arg->retval = 0;
 
       pthread_mutex_lock(&peer_mut); 
 
@@ -77,30 +79,55 @@ void* notify_pth(void* v_arg){
              */
             log_f("sending credentials");
             if(send(arg->socks[i], &arg->sender, sizeof(uid_t), 0) <= 0){
-                  arg->socks[i] = -1;
-                  break;
+                  arg->retval = arg->socks[i] = -1;
+                  continue;
             }
             /* MSGTYPE */
             log_f("sending msgtype");
             if(send(arg->socks[i], &arg->msg_type, sizeof(int), 0) <= 0){
-                  arg->socks[i] = -1;
-                  break;
+                  arg->retval = arg->socks[i] = -1;
+                  continue;
             }
             /* sending ref_no */
             log_f("ref no");
             if(send(arg->socks[i], &arg->ref_no, sizeof(int), 0) <= 0){
-                  arg->socks[i] = -1;
-                  break;
+                  arg->retval = arg->socks[i] = -1;
+                  continue;
             }
             log_f("msg");
             if(send(arg->socks[i], arg->msg, 200, 0) <= 0){
-                  arg->socks[i] = -1;
-                  break;
+                  arg->retval = arg->socks[i] = -1;
+                  continue;
             }
       }
       pthread_mutex_unlock(&peer_mut); 
       log_f("returning notify_pth");
       return NULL;
+}
+
+/* returns whether a member has disconnected */
+_Bool notify(struct notif_arg* arg){
+      pthread_t pth;
+      /* TODO: this doesn't need to occur in a separate thread */
+      pthread_create(&pth, NULL, &notify_pth, arg);
+      pthread_join(pth, NULL);
+      return arg->retval != -1;
+}
+
+/* NUMBER OF MEMBERS IS SENT IN REF_NO */
+_Bool send_mem_inf(int* peers, int n_peers){
+      struct notif_arg arg;
+      arg.socks = peers;
+      arg.n_peers = n_peers;
+      arg.msg_buf = 0;
+      arg.msg_type = MSG_N_MEM_INF;
+      arg.sender = -1;
+      memset(arg.msg, 0, 201);
+      arg.ref_no = 0;
+      for(int i = 0; i < n_peers; ++i)
+            arg.ref_no += peers[i] != -1;
+
+      return notify(&arg);
 }
 
 _Bool spread_msg(int* peers, int n_peers, int ref_no, char* msg, uid_t sender_uid){
@@ -120,9 +147,7 @@ _Bool spread_msg(int* peers, int n_peers, int ref_no, char* msg, uid_t sender_ui
       log_f("spread_msg is about to send: ");
       log_f(msg);
 
-      pthread_t pth;
-      pthread_create(&pth, NULL, &notify_pth, &arg);
-      return !pthread_join(pth, NULL);
+      return notify(&arg);
 }
 
 _Bool spread_notif(int notif_type, int* peers, int n_peers,
@@ -139,11 +164,7 @@ _Bool spread_notif(int notif_type, int* peers, int n_peers,
       /* only 50 chars are used */
       if(arg.msg_buf)strncpy(arg.msg, label, 50);
 
-      /* TODO: this doesn't need to occur in a separate thread */
-      pthread_t pth;
-      pthread_create(&pth, NULL, &notify_pth, &arg);
-      log_f("about to join");
-      return !pthread_join(pth, NULL);
+      return notify(&arg);
 }
 
 _Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock){
@@ -185,9 +206,7 @@ _Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock){
       memset(arg.msg, 0, 201);
       /* only 50 chars are used */
 
-      pthread_t pth;
-      pthread_create(&pth, NULL, &notify_pth, &arg);
-      return !pthread_join(pth, NULL);
+      return notify(&arg);
 }
 
 /* need to find a way to know who requested update */
@@ -213,9 +232,7 @@ _Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, struct rname_u
       memset(arg.msg, 0, 201);
       strncpy(arg.msg, label, 50);
 
-      pthread_t pth;
-      pthread_create(&pth, NULL, &notify_pth, &arg);
-      _Bool ret = !pthread_join(pth, NULL);
+      _Bool ret = notify(&arg);
 
       --ruc.n;
       for(int j = i; j < ruc.n; ++j)ruc.sp[j] = ruc.sp[j+1];
@@ -269,6 +286,16 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
                   /* sender sock is sender in this case */
                   pass_rname_up_inf(ref_no, sender_sock, str_arg, ruc);
                   break;
+            case MSG_N_MEM_REQ:
+                  /*
+                   *find a way to lock on this - what if peers
+                   *is changed mid call
+                   */
+                  /*pthread_mutex_lock(&peer_mut);*/
+                  send_mem_inf(peers, n_peers);
+                  /*pthread_mutex_unlock(&peer_mut);*/
+                  break;
+
             default: return 0;
       }
       log_f("the following str_arg was recvd");
@@ -339,6 +366,7 @@ void* read_cl_pth(void* peer_sock_v){
             init_peers(0);
             u_ref_no = 0;
       }
+
       pthread_mutex_unlock(&peer_mut);
       return NULL;
 }
