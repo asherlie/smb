@@ -12,7 +12,6 @@
 
 #include <signal.h>
 
-int n_members = 0;
 struct room_lst* cur_room;
 
 struct rm_hash_lst init_rm_hash_lst(int buckets){
@@ -325,10 +324,10 @@ void* read_notif_pth(void* rnp_arg_v){
                   case MSG_N_MEM_INF:
                         if(!rnp_arg->n_mem_req)break;
                         rnp_arg->n_mem_req = 0;
-                        n_members = ref_no;
                         printf("%s%i%s members are connected to %s**%s%s%s**%s\n",
-                        ANSI_RED, n_members, ANSI_MGNTA, ANSI_RED, ANSI_MGNTA,
-                        rnp_arg->rml->board_path, ANSI_RED ,ANSI_NON);
+                        /* n_members are sent in the ref_no buf */
+                        ANSI_RED, ref_no, ANSI_MGNTA, ANSI_RED, ANSI_MGNTA,
+                        rnp_arg->rml->board_path, ANSI_RED, ANSI_NON);
                         break;
             }
       }
