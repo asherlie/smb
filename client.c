@@ -12,6 +12,7 @@
 
 #include <signal.h>
 
+int n_members = 0;
 struct room_lst* cur_room;
 
 struct rm_hash_lst init_rm_hash_lst(int buckets){
@@ -240,6 +241,14 @@ int snd_rname_update(int rm_ref_no, char* rm_name, int sock){
       return send_mb_r(mb_a, sock);
 }
 
+int req_n_mem(int sock){
+      struct mb_msg mb_a;
+      mb_a.mb_inf[0] = MSG_N_MEM_REQ;
+      mb_a.mb_inf[1] = -1;
+      memset(mb_a.str_arg, 0, 201);
+      return send_mb_r(mb_a, sock);
+}
+
 /* ~~~~~~~~~ communication end ~~~~~~~~~~~ */
 
 /* four reads are executed each iteration:
@@ -253,6 +262,7 @@ void* read_notif_pth(void* rnp_arg_v){
       int ref_no, msg_type; uid_t uid;
       char buf[201];
       struct room_lst* cur_r = NULL;
+      rnp_arg->n_mem_req = 0;
       while(1){
             memset(buf, 0, 201);
             /* reading uid_t of sender */
@@ -272,7 +282,6 @@ void* read_notif_pth(void* rnp_arg_v){
             printf("string: \"%s\" read from buf\n", buf);
             #endif
 
-            /* if we've received a msgtype_notif, add room */
             switch(msg_type){
                   case MSGTYPE_NOTIF:
                         add_room_rml(rnp_arg->rml, ref_no, buf, uid, NULL);
@@ -312,6 +321,12 @@ void* read_notif_pth(void* rnp_arg_v){
                                */
                               printf("%s%i%s: %s[*ROOM_CREATE* %s]%s\n",
                               ANSI_GRE, cur_r->creator, ANSI_NON, ANSI_RED, buf, ANSI_NON);
+                        break;
+                  case MSG_N_MEM_INF:
+                        if(!rnp_arg->n_mem_req)break;
+                        rnp_arg->n_mem_req = 0;
+                        n_members = ref_no;
+                        printf("%s%i%s members are connected%s\n", ANSI_RED, n_members, ANSI_MGNTA, ANSI_NON);
                         break;
             }
       }
@@ -404,6 +419,12 @@ void* repl_pth(void* rnp_arg_v){
                                     printf("%syou have not yet joined a room%s\n", ANSI_MGNTA, ANSI_NON);
                               else 
                                     printf("%scurrent room is \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
+                              break;
+                        /* number of users */
+                        case 'u':
+                        case '#':
+                              rnp_arg->n_mem_req = 1;
+                              req_n_mem(rnp_arg->sock);
                               break;
                         /* exit or e[x]it */
                         case 'e':

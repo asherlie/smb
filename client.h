@@ -35,6 +35,7 @@ struct rm_hash_lst{
 };
 
 struct read_notif_pth_arg{
+      _Bool n_mem_req;
       int sock;
       struct rm_hash_lst* rml;
 };
