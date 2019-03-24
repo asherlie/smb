@@ -12,11 +12,18 @@ the host does not store messages and does nothing more than reroute messages
 beteen clients
 
 usage:
-      ./smb {-[p]wd} -C [board_name] - creates a board with name [board_name]
-      ./smb {-[p]wd}    [board_path] - joins board at path [board_path]
+      ./smb {-[a]ny} {-[p]wd} {-[d]ur [hours]} {-C} [board_name] - creates or joins a board with name [board_name]
 
-the -pwd flag limits the scope of smb's board creation and board searching to
-the current working directory
+-C indicates create only mode
+
+if the -pwd flag is set, the scope of smb's board creation
+and searching is limited to the current working directory
+
+if the -any flag is set, the first board that is found will be joined
+
+if the -dur flag is used to set a board time limit, the board will be
+removed after [hours] hours - otherwise, board will last for 5 days
+
 
 client commands:
 
@@ -41,6 +48,10 @@ client commands:
 
       /[w]hich:
             prints current room name and reference number
+      
+      /[u]ser:
+      /[#]:
+            prints number of users in current board
 
       /[e]xit:
       /e[x]it:
