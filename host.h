@@ -10,7 +10,7 @@ struct rname_up_cont{
 };
 
 struct notif_arg{
-      int n_peers, * socks, ref_no, msg_type;
+      int n_peers, * socks, ref_no, msg_type, retval;
       uid_t sender;
       _Bool msg_buf;
       char msg[201];
