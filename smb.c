@@ -75,9 +75,17 @@ void p_usage(char* bname){
       bname, bname);
 }
 
+_Bool strtoi(const char* str, int* i){
+      char* res;
+      int r = strtol(str, &res, 10);
+      if(*res)return 0;
+      *i = (int)r;
+      return 1;
+}
+
 int main(int a, char** b){
       _Bool lim_pwd = 0, create = 0, any = 0;
-      int cre_arg = -1;
+      int cre_arg = -1, dur = -1;
       for(int i = 1; i < a; ++i){
             if(*b[i] == '-'){
                   switch(b[i][1]){
@@ -94,7 +102,11 @@ int main(int a, char** b){
                         case 'a':
                               any = 1;
                               break;
-
+                        case 'd':
+                              /* if this is the last arg */
+                              if(i == a-1)break;
+                              strtoi(b[++i], &dur);
+                              break;
                         /* cre_arg will be set to either to element after -C or
                          * the first non flag
                          */
@@ -132,7 +144,7 @@ int main(int a, char** b){
       (strchr(b[cre_arg], '/') || lim_pwd) ? "%s.smbr" : "/var/tmp/%s.smbr",
       b[cre_arg]);
       /* create_mb returns 2 from client process */
-      if(create_mb(ext) == 2){
+      if(create_mb(ext, dur) == 2){
             if(create)return 0;
 
             usleep(10000);
