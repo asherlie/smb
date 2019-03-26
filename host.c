@@ -265,6 +265,12 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
                   log_f("end_str");
                   spread_notif(MSGTYPE_NOTIF, peers, n_peers, assign_ref_no(), str_arg, sender);
                   break;
+            case MSG_REMOVE_BOARD:
+                  log_f("remove board called with following uid's");
+                  log_f_int(getuid());
+                  log_f_int(sender);
+                  if(sender == getuid())exit(EXIT_SUCCESS);
+                  break;
             /* TODO: thread removal */
             case MSG_REMOVE_THREAD:
                   /* only she who created a room can delete it */
