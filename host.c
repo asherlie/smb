@@ -271,12 +271,6 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
                   log_f_int(sender);
                   if(sender == getuid())exit(EXIT_SUCCESS);
                   break;
-            /* TODO: thread removal */
-            case MSG_REMOVE_THREAD:
-                  /* only she who created a room can delete it */
-                  log_f("room with following number removed");
-                  log_f_int(ref_no);
-                  break;
             case MSG_REPLY_THREAD:
                   spread_msg(peers, n_peers, ref_no, str_arg, sender);
                   break;

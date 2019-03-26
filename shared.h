@@ -6,7 +6,6 @@
 #define MSGTYPE_MSG       1
 
 #define MSG_CREATE_THREAD 2
-#define MSG_REMOVE_THREAD 3
 #define MSG_REPLY_THREAD  4
 
 /* these two msg types update unknown labels */
