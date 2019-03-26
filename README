@@ -53,6 +53,11 @@ client commands:
       /[#]:
             prints number of users in current board
 
+      /[d]elete:
+            sends a deletion request for current board
+            this request will be fulfilled IFF you are
+            board's creator
+
       /[e]xit:
       /e[x]it:
             exits current room
