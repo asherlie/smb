@@ -7,10 +7,11 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include <signal.h>
+#include <pwd.h>
+
 #include "client.h"
 #include "shared.h"
-
-#include <signal.h>
 
 struct room_lst* cur_room;
 
@@ -343,7 +344,8 @@ void* read_notif_pth(void* rnp_arg_v){
                         break;
             }
       }
-      printf("%slost connection to board%s\n", ANSI_RED, ANSI_NON);
+      /*printf("%slost connection to board%s\n", ANSI_RED, ANSI_NON);*/
+      printf("%sboard has been removed%s\n", ANSI_RED, ANSI_NON);
       run = 0;
       return NULL;
 }
@@ -457,8 +459,8 @@ void* repl_pth(void* rnp_arg_v){
                               break;
                         /* sends a deletion request for current board */
                         case 'd':
-                              printf("%sdeletion request has been sent -- authenticating%s\n",
-                              ANSI_MGNTA, ANSI_NON);
+                              printf("%sdeletion request has been sent -- %sauthenticating%s\n",
+                              ANSI_MGNTA, ANSI_RED, ANSI_NON);
                               rm_board(rnp_arg->sock);
                               break;
                         case 'h':
@@ -473,6 +475,12 @@ void* repl_pth(void* rnp_arg_v){
                   reply_room(cur_room->ref_no, inp, rnp_arg->sock);
       }
       return NULL;
+}
+
+char* uid_name(uid_t uid){
+      struct passwd * pwd = getpwuid(uid);
+      if(!pwd)return NULL;
+      return pwd->pw_name;
 }
 
 void ex(int x){(void)x; run = 0;}
@@ -514,7 +522,7 @@ _Bool client(char* sock_path){
       pthread_detach(repl_pth_pth);
 
       /* doesn't need to be memset(*, 0, **)'d - this is handled by insert_msg_msg_queue */
-      char tmp_p[201];
+      char tmp_p[201], * tmp_name;
       uid_t s_uid;
 
       signal(SIGINT, ex);
@@ -522,7 +530,8 @@ _Bool client(char* sock_path){
       while(run){
             // pop_msg_queue
             // if(cur_room && (tmp_p = pop_msg_queue(cur_room)))puts(tmp_p);
-            if(cur_room && pop_msg_queue(cur_room, tmp_p, &s_uid))printf("%s%i%s: %s\n", ANSI_GRE, s_uid, ANSI_NON, tmp_p);
+            if(cur_room && pop_msg_queue(cur_room, tmp_p, &s_uid))
+                  printf("%s%s%s: %s\n", ANSI_GRE, (tmp_name = uid_name(s_uid)) ? tmp_name : "{UNKNOWN}", ANSI_NON, tmp_p);
             usleep(10000);
       }
       free_rm_hash_lst(rml);
