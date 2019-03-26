@@ -255,6 +255,11 @@ int rm_board(int sock){
 
 /* ~~~~~~~~~ communication end ~~~~~~~~~~~ */
 
+/* run is accessed both from read_notif_pth and client() */
+/* once run is set to 0, client will safely exit */
+/* run is volatile because its value can be changed by SIGINTs */
+volatile _Bool run = 1;
+
 /* four reads are executed each iteration:
  *    1: uid_t sender
  *    2: int   msg_type
@@ -339,6 +344,7 @@ void* read_notif_pth(void* rnp_arg_v){
             }
       }
       printf("%slost connection to board%s\n", ANSI_RED, ANSI_NON);
+      run = 0;
       return NULL;
 }
 
@@ -469,7 +475,6 @@ void* repl_pth(void* rnp_arg_v){
       return NULL;
 }
 
-volatile _Bool run = 1;
 void ex(int x){(void)x; run = 0;}
 
 _Bool client(char* sock_path){
