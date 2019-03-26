@@ -245,6 +245,14 @@ int req_n_mem(int sock){
       return send_mb_r(mb_a, sock);
 }
 
+int rm_board(int sock){
+      struct mb_msg mb_a;
+      mb_a.mb_inf[0] = MSG_REMOVE_BOARD;
+      mb_a.mb_inf[1] = -1;
+      memset(mb_a.str_arg, 0, 201);
+      return send_mb_r(mb_a, sock);
+}
+
 /* ~~~~~~~~~ communication end ~~~~~~~~~~~ */
 
 /* four reads are executed each iteration:
@@ -436,6 +444,10 @@ void* repl_pth(void* rnp_arg_v){
                               if(!cur_room)break;
                               printf("%syou have left \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
                               cur_room = NULL;
+                              break;
+                        /* sends a deletion request for current board */
+                        case 'd':
+                              rm_board(rnp_arg->sock);
                               break;
                         case 'h':
                               p_help();

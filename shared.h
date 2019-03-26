@@ -17,6 +17,8 @@
 #define MSG_N_MEM_REQ     7
 #define MSG_N_MEM_INF     8
 
+#define MSG_REMOVE_BOARD  9
+
 #define ANSI_RED   "\x1B[31m"
 #define ANSI_NON   "\x1b[0m"
 #define ANSI_GRE   "\x1b[32m"
