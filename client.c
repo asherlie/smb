@@ -451,6 +451,8 @@ void* repl_pth(void* rnp_arg_v){
                               break;
                         /* sends a deletion request for current board */
                         case 'd':
+                              printf("%sdeletion request has been sent -- authenticating%s\n",
+                              ANSI_MGNTA, ANSI_NON);
                               rm_board(rnp_arg->sock);
                               break;
                         case 'h':
