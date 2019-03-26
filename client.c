@@ -181,11 +181,8 @@ _Bool pop_msg_queue(struct room_lst* rm, char* msg, uid_t* sender){
       pthread_mutex_lock(&rm->room_msg_queue_lck);
       if(rm->n_msg){
             *sender = rm->msg_queue->sender;
-            #pragma GCC diagnostic push
-            #pragma GCC diagnostic ignored "-Wstringop-truncation"
             /* if our char* is truncated by 1 byte, so be it */
             strncpy(msg, rm->msg_queue->msg, 199);
-            #pragma GCC diagnostic pop
             ++rm->msg_queue; ++rm->msg_queue_cap; --rm->n_msg;
             ret = 1;
       }
