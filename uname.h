@@ -13,3 +13,4 @@ struct uname_table{
 
 char* get_uname(uid_t uid, struct uname_table* table);
 struct uname_table* uname_table_init(struct uname_table* table, int bux);
+void free_uname_table(struct uname_table* table);

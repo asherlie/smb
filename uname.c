@@ -47,3 +47,9 @@ char* get_uname(uid_t uid, struct uname_table* table){
       insert_name(uid, ret = pw->pw_name, table);
       return ret;
 }
+
+void free_uname_table(struct uname_table* table){
+      for(int i = 0; i < table->bux; ++i)
+            if(table->names[i])free(table->names[i]);
+      free(table->names);
+}
