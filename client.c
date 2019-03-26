@@ -534,5 +534,6 @@ _Bool client(char* sock_path){
             usleep(10000);
       }
       free_rm_hash_lst(rml);
+      free_uname_table(&ut);
       return 1;
 }
