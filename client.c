@@ -295,8 +295,8 @@ void* read_notif_pth(void* rnp_arg_v){
             switch(msg_type){
                   case MSGTYPE_NOTIF:
                         add_room_rml(rnp_arg->rml, ref_no, buf, uid, NULL);
-                        printf("%s%i%s: %s[ROOM_CREATE %s]%s\n",
-                        ANSI_GRE, uid, ANSI_NON, ANSI_RED, buf, ANSI_NON);
+                        printf("%s%s%s: %s[ROOM_CREATE %s]%s\n",
+                        ANSI_GRE, get_uname(uid, rnp_arg->uname_table), ANSI_NON, ANSI_RED, buf, ANSI_NON);
                         break;
                   case MSGTYPE_MSG:
                         // TODO: room lookup is too slow without label
@@ -477,15 +477,13 @@ void* repl_pth(void* rnp_arg_v){
       return NULL;
 }
 
-char* uid_name(uid_t uid){
-      struct passwd * pwd = getpwuid(uid);
-      if(!pwd)return NULL;
-      return pwd->pw_name;
-}
-
 void ex(int x){(void)x; run = 0;}
 
 _Bool client(char* sock_path){
+      struct uname_table ut;
+      /* TODO: free this struct */
+      uname_table_init(&ut, 100);
+
       cur_room = NULL;
       int sock = listen_sock();
 
@@ -500,12 +498,13 @@ _Bool client(char* sock_path){
             /* printf("failed to connect to host \"%s\"\n", sock_path); */
             return 0;
 
-      printf("%shello, %s%i%s%s! welcome to **%s%s%s**\n%senter \"/h\" for help at any time\n",
-      ANSI_RED, ANSI_BLU, getuid(), ANSI_NON, ANSI_RED, ANSI_MGNTA, sock_path, ANSI_RED, ANSI_NON);
+      printf("%shello, %s%s%s%s! welcome to **%s%s%s**\n%senter \"/h\" for help at any time\n",
+      ANSI_RED, ANSI_BLU, get_uname(getuid(), &ut), ANSI_NON, ANSI_RED, ANSI_MGNTA, sock_path, ANSI_RED, ANSI_NON);
 
       struct rm_hash_lst rml = init_rm_hash_lst(100);
 
       struct read_notif_pth_arg rnpa;
+      rnpa.uname_table = &ut;
       rnpa.sock = sock;
       rnpa.rml = &rml;
       strncpy(rnpa.rml->board_path, sock_path, PATH_MAX);
@@ -531,7 +530,7 @@ _Bool client(char* sock_path){
             // pop_msg_queue
             // if(cur_room && (tmp_p = pop_msg_queue(cur_room)))puts(tmp_p);
             if(cur_room && pop_msg_queue(cur_room, tmp_p, &s_uid))
-                  printf("%s%s%s: %s\n", ANSI_GRE, (tmp_name = uid_name(s_uid)) ? tmp_name : "{UNKNOWN}", ANSI_NON, tmp_p);
+                  printf("%s%s%s: %s\n", ANSI_GRE, (tmp_name = get_uname(s_uid, &ut)) ? tmp_name : "{UNKNOWN}", ANSI_NON, tmp_p);
             usleep(10000);
       }
       free_rm_hash_lst(rml);

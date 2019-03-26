@@ -1,6 +1,8 @@
 #include <limits.h>
 #include <pthread.h>
 
+#include "uname.h"
+
 struct msg_queue_entry{
       char msg[201];
       uid_t sender;
@@ -40,6 +42,7 @@ struct read_notif_pth_arg{
       _Bool n_mem_req;
       int sock;
       struct rm_hash_lst* rml;
+      struct uname_table* uname_table;
 };
 
 _Bool client(char* sock_path);
