@@ -439,8 +439,9 @@ void* repl_pth(void* rnp_arg_v){
                         case 'l':
                               for(int i = 0; rnp_arg->rml->in_use[i] != -1; ++i){
                                     for(struct room_lst* rl = rnp_arg->rml->rooms[rnp_arg->rml->in_use[i]]; rl; rl = rl->next)
-                                          printf("%s%i%s: \"%s%s%s\": %s%i%s\n",
-                                          (rl->creator == rnp_arg->rml->me) ? ANSI_BLU : ANSI_NON, rl->creator, ANSI_NON,
+                                          printf("%s%s%s: \"%s%s%s\": %s%i%s\n",
+                                          (rl->creator == rnp_arg->rml->me) ? ANSI_BLU : ANSI_NON, 
+                                          get_uname(rl->creator, rnp_arg->uname_table), ANSI_NON,
                                           (rl == cur_room) ? ANSI_BLU : ANSI_NON,
                                           rl->label, ANSI_NON, (rl == cur_room) ? ANSI_BLU : ANSI_NON, rl->ref_no, ANSI_NON);
                               }
