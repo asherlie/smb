@@ -401,6 +401,8 @@ void spin(int x){(void)x;}
 
 /* creates an mb in the working directory that will exist for duration_hrs */
 /* if duration_hrs <= 0, board will exist for 5 days */
+/* returns 0 if name already exists, -1 for socket issues, 
+ * 1 on catastrophic error, 2 if exiting twice/success */
 int create_mb(char* name, int duration_hrs){
       /* checking for existence of socket */
       struct stat st;
@@ -429,7 +431,7 @@ int create_mb(char* name, int duration_hrs){
       }
       #endif
       int sock = listen_sock();
-      if(sock == -1)return 0;
+      if(sock == -1)return -1;
 
       struct sockaddr_un addr;
       memset(&addr, 0, sizeof(struct sockaddr_un));
@@ -437,7 +439,7 @@ int create_mb(char* name, int duration_hrs){
       strncpy(addr.sun_path, name, sizeof(addr.sun_path)-1);
 
       if(bind(sock, (struct sockaddr*)&addr, SUN_LEN(&addr)) == -1
-      || listen(sock, 0) == -1)return 0;
+      || listen(sock, 0) == -1)return -1;
 
       chmod(addr.sun_path, 0777);
 
