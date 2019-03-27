@@ -45,36 +45,43 @@ void free_rm_hash_lst(struct rm_hash_lst rml){
 
 /* looks up a thread by its label or ref_no 
  * if both are provided, label is hashed
- * for lookup
+ * for lookup and ref_nos are confirmed
  */
 struct room_lst* room_lookup(struct rm_hash_lst rml, char* rm_name, int ref_no){
-      if(!rm_name){
-            for(int i = 0; rml.in_use[i] != -1; ++i){
-                  for(struct room_lst* cur = rml.rooms[rml.in_use[i]]; cur;
-                      cur = cur->next){
-                        if(cur->ref_no == ref_no)return cur;
-                  }
-            }
-            return NULL;
-      }
-      int ind = *rm_name % rml.bux;
-      /* TODO: because indices are found using first letter hashed, room cannot
-       * be found when rm_name a substring of room->label but doesn't include 
-       * the first letter
-       * TODO: switch to ref_no based hashes
-       * THIS IS ANOTHER REASON TO SWITCH TO REF_NO HASHES
+      /* if we don't find anything by hashing or iteratively, we should return
+       * the last index of the relevant index for insertion
        */
-      if(!rml.rooms[ind])return NULL;
-      struct room_lst* ret = NULL;
-      for(struct room_lst* cur = rml.rooms[ind]; cur; cur = cur->next)
-            /* TODO: substrings in the middle of cur->label should be searchable */
-            /* TODO: ensure that ref_no matches */
-            if(strstr(cur->label, rm_name)){
-                  if(cur->ref_no == ref_no)return cur;
-                  ret = cur;
+      struct room_lst* relevant;
+
+      if(rm_name){
+            int ind = *rm_name % rml.bux;
+            /* TODO: because indices are found using first letter hashed, room cannot
+             * be cheaply found when rm_name a substring of room->label but doesn't include 
+             * the first letter
+             * TODO: switch to ref_no based hashes
+             * THIS IS ANOTHER REASON TO SWITCH TO REF_NO HASHES
+             */
+            if(rml.rooms[ind]){
+            /*if(!rml.rooms[ind])return NULL;*/
+                  for(struct room_lst* cur = rml.rooms[ind]; cur; cur = cur->next)
+                        if(strstr(cur->label, rm_name)){
+                              if(cur->ref_no == ref_no || ref_no == -1)return cur;
+                              relevant = cur;
+                        }
             }
-      return ret;
+      }
+
+      /* if we've fallen through && rm_name, there's still hope - it won't come cheap though  */
+
+      for(int i = 0; rml.in_use[i] != -1; ++i)
+            for(struct room_lst* cur = rml.rooms[rml.in_use[i]]; cur; cur = cur->next)
+                  if((cur->ref_no == ref_no) || (rm_name && strstr(cur->label, rm_name)))return cur;
+
+      return NULL;
+      /* TODO: relevant should be an optional param */
+      return relevant;
 }
+
 
 /* return existence of ref_no */
 /* param rl is optional - in case rl is already malloc'd - this happens when a name is being updated */
