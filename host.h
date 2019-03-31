@@ -1,7 +1,7 @@
 #include <sys/types.h>
 
 struct sock_pair{
-      int req, snd;
+      int req, * snd;
 };
 
 struct rname_up_cont{
