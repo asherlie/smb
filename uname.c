@@ -5,9 +5,6 @@
 
 #include "uname.h"
 
-
-
-#include <stdio.h>
 struct uname_table* uname_table_init(struct uname_table* table, int bux){
       if(!table)table = malloc(sizeof(struct uname_table));
       table->bux = bux;
@@ -47,7 +44,7 @@ char* get_uname(uid_t uid, struct uname_table* table){
       char* ret;
       if((ret = lookup_name(uid, table)))return ret;
       struct passwd* pw = getpwuid(uid);
-      if(!pw)return "{UNKNOWN}";//NULL;
+      if(!pw)return "{UNKNOWN}";
       insert_name(uid, ret = pw->pw_name, table);
       return ret;
 }
