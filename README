@@ -63,7 +63,5 @@ client commands:
             exits current room
 
 [ROOM_CREATE]   indicates that a new room has been created
-[*ROOM_CREATE*] indicates that a room whose creation predates your
-                joining of the board has been shared with you -
-                the sharing of rooms happens automatically when a
-                message is sent in a previously unknown board
+[*ROOM_CREATE*] upon joining a board, this alert indicates
+                that a room that predates your joining exists
