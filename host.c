@@ -167,7 +167,7 @@ _Bool spread_notif(int notif_type, int* peers, int n_peers,
       return notify(&arg);
 }
 
-_Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock){
+_Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock, struct rname_up_cont* rupc){
       log_f("pass_rname_up_req called");
       struct notif_arg arg;
       /*
@@ -176,26 +176,28 @@ _Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock){
        */
       _Bool success = 0;
       for(int i = 0; i < n_peers; ++i){
-            if(peers[i] != -1 && peers[i] != sender_sock){
+            if(peers[i] != -1){
+                  /* no sock added after sender_sock will be helpful */
+                  if(peers[i] == sender_sock)return 0;
                   arg.socks = &peers[i];
                   success = 1;
                   break;
             }
       }
       if(!success)return 0;
-      if(ruc.n == ruc.cap){
-            ruc.cap *= 2;
-            struct sock_pair* tmp_sp = malloc(sizeof(struct sock_pair)*ruc.cap);
-            memcpy(tmp_sp, ruc.sp, sizeof(struct sock_pair)*ruc.n);
-            free(ruc.sp);
-            ruc.sp = tmp_sp;
+      if(rupc->n == rupc->cap){
+            rupc->cap *= 2;
+            struct sock_pair* tmp_sp = malloc(sizeof(struct sock_pair)*rupc->cap);
+            memcpy(tmp_sp, rupc->sp, sizeof(struct sock_pair)*rupc->n);
+            free(rupc->sp);
+            rupc->sp = tmp_sp;
       }
 
       /* adding sender_sock to ruc as requester,
        * paired with *arg.socks as sender
        */
-      ruc.sp[ruc.n].req = sender_sock;
-      ruc.sp[ruc.n++].snd = *arg.socks;
+      rupc->sp[rupc->n].req = sender_sock;
+      rupc->sp[rupc->n++].snd = arg.socks;
 
       arg.n_peers = 1;
       arg.ref_no = ref_no;
@@ -210,15 +212,16 @@ _Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock){
 }
 
 /* need to find a way to know who requested update */
-_Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, struct rname_up_cont ruc){
+_Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, struct rname_up_cont* rupc){
       struct notif_arg arg;
       _Bool found = 0;
       int i;
-      for(i = 0; i < ruc.n; ++i){
+      /* this loop is finding out who we need to send info to */
+      for(i = rupc->n-1; i >= 0; --i){
             /* TODO: handle case where multiple requesters requested from sender */
             /* TODO: just make it so that only one request struct can be in place at a time */
-            if(ruc.sp[i].snd == sender_sock){
-                  arg.socks = &ruc.sp[i].req;
+            if(*rupc->sp[i].snd == sender_sock){
+                  arg.socks = &rupc->sp[i].req;
                   found = 1;
                   break;
             }
@@ -234,8 +237,7 @@ _Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, struct rname_u
 
       _Bool ret = notify(&arg);
 
-      --ruc.n;
-      for(int j = i; j < ruc.n; ++j)ruc.sp[j] = ruc.sp[j+1];
+      memmove(rupc->sp+i, rupc->sp+i+1, sizeof(struct sock_pair)*(--rupc->n)-i);
 
       return ret;
 }
@@ -275,7 +277,7 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
                   spread_msg(peers, n_peers, ref_no, str_arg, sender);
                   break;
             case MSG_RNAME_UP_REQ:
-                  pass_rname_up_req(peers, n_peers, ref_no, sender_sock);
+                  pass_rname_up_req(peers, n_peers, ref_no, sender_sock, &ruc);
                   break;
             /* TODO: original creator should be passed along -
              * as of now, it appears to the receiver that the
@@ -284,7 +286,7 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
             /* pass along room name to she who requested it */
             case MSG_RNAME_UP_INF:
                   /* sender sock is sender in this case */
-                  pass_rname_up_inf(ref_no, sender_sock, str_arg, ruc);
+                  pass_rname_up_inf(ref_no, sender_sock, str_arg, &ruc);
                   break;
             case MSG_N_MEM_REQ:
                   /*
@@ -376,7 +378,7 @@ void add_host(int sock){
       if(n_peers == peer_cap){
             peer_cap *= 2;
             int* tmp_peers = malloc(sizeof(int)*peer_cap);
-            memcpy(tmp_peers, peers, n_peers);
+            memcpy(tmp_peers, peers, sizeof(int)*n_peers);
             free(peers);
             peers = tmp_peers;
       }
@@ -389,6 +391,10 @@ void add_host(int sock){
       /* this means that i need to guarantee peers doesn't have entries removed/rearranged */
       pthread_create(&read_cl_pth_pth, NULL, &read_cl_pth, (peers+n_peers)-1);
       pthread_detach(read_cl_pth_pth);
+
+      /* TODO: make sure it's safe to access peers from here */
+      for(int i = 0; i < /* TODO: safely! */u_ref_no; ++i)
+            pass_rname_up_req(peers, n_peers, i, sock, &ruc);
 }
 
 void* add_host_pth(void* local_sock_v){
