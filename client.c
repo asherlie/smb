@@ -21,7 +21,7 @@ struct rm_hash_lst init_rm_hash_lst(int buckets){
       rml.n = 0;
       rml.bux = buckets;
 
-      rml.rooms = calloc(rml.bux, sizeof(struct room_lst));
+      rml.rooms = calloc(rml.bux, sizeof(struct room_lst*));
       rml.in_use = malloc(sizeof(int)*(rml.bux+1));
       memset(rml.in_use, -1, sizeof(int)*(rml.bux+1));
       return rml;
@@ -126,36 +126,34 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
 }
 
 /* returns the room_lst* that has been inserted to rml, or NULL on failure */
-struct room_lst* rename_room_rml(struct rm_hash_lst rml, int ref_no, char* new_name){
-      struct room_lst* rl = room_lookup(rml, NULL, ref_no);
-      if(!rl)return NULL;
+/* TODO: this needs a new name to reflect its insertion behavior */
+struct room_lst* rename_room_rml(struct rm_hash_lst* rml, int ref_no, char* new_name, uid_t creator){
+      struct room_lst* rl = room_lookup(*rml, NULL, ref_no);
+      if(!rl)return add_room_rml(rml, ref_no, new_name, creator, NULL);
       /* if rl is only entry in its bucket */
-      int bucket = *rl->label % rml.bux;
-      if(rml.rooms[bucket] == rl){
+      int bucket = *rl->label % rml->bux;
+      if(rml->rooms[bucket] == rl){
             // in_use must be adjusted
-            for(int i = 0; rml.in_use[i] != -1; ++i){
-                  if(rml.in_use[i] == bucket){
-                        #ifdef ASH_DEBUG
-                        printf("moving rml.in_use[%i], rml.in_use[%i], %i)\n", i, i+1, rml.bux-i-1);
-                        #endif
-                        memmove(rml.in_use+i, rml.in_use+i+1, --rml.n-i);
+            for(int i = 0; rml->in_use[i] != -1; ++i){
+                  if(rml->in_use[i] == bucket){
+                        memmove(rml->in_use+i, rml->in_use+i+1, sizeof(int)*(--rml->n)-i);
                         break;
                   }
             }
       }
       /* finding room_lst* before rl */
-      struct room_lst* rl_prev = rml.rooms[bucket];
+      struct room_lst* rl_prev = rml->rooms[bucket];
       if(rl_prev != rl){
             for(; rl_prev->next != rl; rl_prev = rl_prev->next);
             /* is this redundant? */
             if(!rl_prev || !rl_prev->next)return NULL;
             rl_prev->next = NULL;
       }
-      else rml.rooms[bucket] = NULL;
+      else rml->rooms[bucket] = NULL;
       /* rl must be moved from its current bucket */
       strncpy(rl->label, new_name, sizeof(rl->label)-1);
 
-      add_room_rml(&rml, ref_no, new_name, rl->creator, rl);
+      add_room_rml(rml, ref_no, new_name, rl->creator, rl);
       return rl;
 }
 
@@ -303,17 +301,21 @@ void* read_notif_pth(void* rnp_arg_v){
                   case MSGTYPE_NOTIF:
                         add_room_rml(rnp_arg->rml, ref_no, buf, uid, NULL);
                         printf("%s%s%s: %s[ROOM_CREATE %s]%s\n",
-                        ANSI_GRE, get_uname(uid, rnp_arg->uname_table), ANSI_NON, ANSI_RED, buf, ANSI_NON);
+                        ANSI_GRE, get_uname(uid, rnp_arg->uname_table),
+                        ANSI_NON, ANSI_RED, buf, ANSI_NON);
                         break;
                   case MSGTYPE_MSG:
                         // TODO: room lookup is too slow without label
                         // TODO: should ref_no be used to hash?
                         // this is the most frequent lookup
-                        cur_r = room_lookup(*rnp_arg->rml, NULL, ref_no);
-                        if(!cur_r){
-                              cur_r = add_room_rml(rnp_arg->rml, ref_no, "{UNKNOWN_LABEL}", uid, NULL);
-                              req_rname_update(ref_no, rnp_arg->sock);
-                        }
+                        if((cur_r = room_lookup(*rnp_arg->rml, NULL, ref_no)))
+                        /* this should never be reached with updated system */
+                        /*
+                         *else{
+                         *      cur_r = add_room_rml(rnp_arg->rml, ref_no, "{UNKNOWN_LABEL}", uid, NULL);
+                         *      req_rname_update(ref_no, rnp_arg->sock);
+                         *}
+                         */
                         /* adding message to msg stack */
                         /* if the above code is being used, no need to check cur_r */
                         // if(cur_r)insert_msg_msg_queue(cur_r, buf, uid);
@@ -323,6 +325,7 @@ void* read_notif_pth(void* rnp_arg_v){
                   /* handling for predated label updates */
 
                   /* send out room name if it's requested */
+
                   case MSG_RNAME_UP_REQ:
                         cur_r = room_lookup(*rnp_arg->rml, NULL, ref_no);
                         if(!cur_r)break;
@@ -332,12 +335,15 @@ void* read_notif_pth(void* rnp_arg_v){
                         /* TODO: confirm that no else condition is required
                          * -- make sure that this should always evaluate to 1
                          */
-                        if((cur_r = rename_room_rml(*rnp_arg->rml, ref_no, buf)))
+                        /* this form should be depracated */
+                        if((cur_r = rename_room_rml(rnp_arg->rml, ref_no, buf, -1)))
                               /* TODO: should a distinction be made between ROOM_CREATE and
                                * ROOM_SHARE, for ex. printf("%s%i%s: %s[ROOM_SHARE]%s\n",);
                                */
-                              printf("%s%i%s: %s[*ROOM_CREATE* %s]%s\n",
-                              ANSI_GRE, cur_r->creator, ANSI_NON, ANSI_RED, buf, ANSI_NON);
+                              printf("%s%s%s: %s[*ROOM_CREATE* %s]%s\n",
+                              ANSI_GRE, get_uname(cur_r->creator, rnp_arg->uname_table),
+                              ANSI_NON, ANSI_RED, buf, ANSI_NON);
+                        /*else add new rm*/
                         break;
                   case MSG_N_MEM_INF:
                         /* TODO: should rml have a member for n_mems? */
@@ -529,16 +535,14 @@ _Bool client(char* sock_path){
       pthread_detach(repl_pth_pth);
 
       /* doesn't need to be memset(*, 0, **)'d - this is handled by insert_msg_msg_queue */
-      char tmp_p[201], * tmp_name;
+      char tmp_p[201];
       uid_t s_uid;
 
       signal(SIGINT, ex);
 
       while(run){
-            // pop_msg_queue
-            // if(cur_room && (tmp_p = pop_msg_queue(cur_room)))puts(tmp_p);
             if(cur_room && pop_msg_queue(cur_room, tmp_p, &s_uid))
-                  printf("%s%s%s: %s\n", ANSI_GRE, (tmp_name = get_uname(s_uid, &ut)) ? tmp_name : "{UNKNOWN}", ANSI_NON, tmp_p);
+                  printf("%s%s%s: %s\n", ANSI_GRE, get_uname(s_uid, &ut), ANSI_NON, tmp_p);
             usleep(10000);
       }
       free_rm_hash_lst(rml);
