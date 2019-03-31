@@ -1,13 +1,17 @@
 #include <sys/types.h>
 #include <stdlib.h>
+#include <string.h>
 #include <pwd.h>
 
 #include "uname.h"
 
+
+
+#include <stdio.h>
 struct uname_table* uname_table_init(struct uname_table* table, int bux){
       if(!table)table = malloc(sizeof(struct uname_table));
       table->bux = bux;
-      table->names = calloc(table->bux, sizeof(struct name_entry));
+      table->names = calloc(table->bux, sizeof(struct name_entry*));
       return table;
 }
 
@@ -26,7 +30,7 @@ _Bool insert_name(uid_t uid, char* name, struct uname_table* table){
       else cur = table->names[ind] = malloc(sizeof(struct name_entry));
       cur->next = NULL;
       cur->uid = uid;
-      cur->name = name;
+      strncpy(cur->name, name, 32);
       return init;
 }
 
@@ -43,7 +47,7 @@ char* get_uname(uid_t uid, struct uname_table* table){
       char* ret;
       if((ret = lookup_name(uid, table)))return ret;
       struct passwd* pw = getpwuid(uid);
-      if(!pw)return NULL;
+      if(!pw)return "{UNKNOWN}";//NULL;
       insert_name(uid, ret = pw->pw_name, table);
       return ret;
 }

@@ -2,7 +2,8 @@
 
 struct name_entry{
       uid_t uid;
-      char* name;
+      /* man useradd - usernames are <= 32 chars */
+      char name[33];
       struct name_entry* next;
 };
 
