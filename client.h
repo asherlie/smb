@@ -26,7 +26,8 @@ struct room_lst{
       // updates from host
        pthread_mutex_t room_msg_queue_lck;
 
-      struct room_lst* next;
+      /* last will only be set in first entry of an ind */
+      struct room_lst* next, * last;
 };
 
 struct rm_hash_lst{

@@ -97,12 +97,11 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
             rml->in_use[rml->n++] = ind;
       }
       else{
-            /* TODO: DON'T ITERATE THROUGH EVERYTHING - KEEP A PTR TO LAST */
-            /* we're stopping short so that cur is not always == NULL after this */
-            struct room_lst* tmp_cur;
-            for(tmp_cur = rml->rooms[ind]; tmp_cur->next; tmp_cur = tmp_cur->next)
-                  if(tmp_cur->ref_no == ref_no)return NULL;
-            cur = tmp_cur->next = (rl) ? rl : malloc(sizeof(struct room_lst));
+            /* if rml->rooms[ind], last will be stored */
+            cur = rml->rooms[ind]->last->next =
+            (rl) ? rl : malloc(sizeof(struct room_lst));
+            /* last is set to NULL in all entries but first of an an ind */
+            cur->last = NULL;
       }
       if(!rl){
             cur->creator = creator;
@@ -119,6 +118,8 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
             /* TODO: destroy this */
             pthread_mutex_init(&cur->room_msg_queue_lck, NULL);
       }
+
+      rml->rooms[ind]->last = cur;
 
       cur->next = NULL;
 
