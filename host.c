@@ -394,6 +394,9 @@ void add_host(int sock){
 
       /* TODO: make sure it's safe to access peers from here */
       for(int i = 0; i < /* TODO: safely! */u_ref_no; ++i)
+            /* even if ref_no i doesn't exist, this request can
+             * be made safely, it just won't be fulfilled
+             */
             pass_rname_up_req(peers, n_peers, i, sock, &ruc);
 }
 
@@ -408,7 +411,8 @@ void spin(int x){(void)x;}
 /* creates an mb in the working directory that will exist for duration_hrs */
 /* if duration_hrs <= 0, board will exist for 5 days */
 /* returns 0 if name already exists, -1 for socket issues, 
- * 1 on catastrophic error, 2 if exiting twice/success */
+ * 1 on catastrophic error, 2 if exiting twice/success 
+ */
 int create_mb(char* name, int duration_hrs){
       /* checking for existence of socket */
       struct stat st;
@@ -418,7 +422,7 @@ int create_mb(char* name, int duration_hrs){
             printf("mb: \"%s\" already exists\n", name);
             return 0;
       }
-      
+
       /* if unspecified, sleep for 5 days */
       unsigned int duration_adj = (duration_hrs > 0) ? duration_hrs : 120;
 
@@ -433,7 +437,6 @@ int create_mb(char* name, int duration_hrs){
       if(pid > 0){
             printf("mb spawned at pid: %i\n", pid);
             return 2;
-            /*exit(EXIT_SUCCESS);*/
       }
       #endif
       int sock = listen_sock();
