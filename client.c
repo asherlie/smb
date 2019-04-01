@@ -30,9 +30,10 @@ struct rm_hash_lst init_rm_hash_lst(int buckets){
 void free_rm_hash_lst(struct rm_hash_lst rml){
       struct room_lst* prev;
       for(int i = 0; rml.in_use[i] != -1; ++i){
-            for(struct room_lst* cur = (prev = rml.rooms[rml.in_use[i]])->next; cur;
-                cur = cur->next){
+            for(struct room_lst* cur = (prev = rml.rooms[rml.in_use[i]])->next; prev;
+                cur = (cur) ? cur->next : cur){
                   pthread_mutex_lock(&prev->room_msg_queue_lck);
+                  free(prev->msg_queue_base);
                   free(prev);
                   /* TODO: is it UB to destroy a locked mut_lock? */
                   pthread_mutex_destroy(&prev->room_msg_queue_lck);
@@ -42,6 +43,8 @@ void free_rm_hash_lst(struct rm_hash_lst rml){
       free(rml.rooms);
       free(rml.in_use);
 }
+
+/* ~~~~~~~~~ room operations begin ~~~~~~~~~~~ */
 
 /* looks up a thread by its label or ref_no 
  * if both are provided, label is hashed
@@ -78,8 +81,8 @@ struct room_lst* room_lookup(struct rm_hash_lst rml, char* rm_name, int ref_no){
                   if((cur->ref_no == ref_no) || (rm_name && strstr(cur->label, rm_name)))return cur;
 
       return NULL;
-      /* TODO: relevant should be an optional param */
       return relevant;
+      /* TODO: relevant should be an optional param */
 }
 
 
@@ -98,8 +101,7 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
       }
       else{
             /* if rml->rooms[ind], last will be stored */
-            cur = rml->rooms[ind]->last->next =
-            (rl) ? rl : malloc(sizeof(struct room_lst));
+            cur = rml->rooms[ind]->last->next = (rl) ? rl : malloc(sizeof(struct room_lst));
             /* last is set to NULL in all entries but first of an an ind */
             cur->last = NULL;
       }
@@ -115,7 +117,6 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
             /* TODO: free */
             cur->msg_queue = malloc(sizeof(struct msg_queue_entry)*cur->msg_queue_cap);
             cur->msg_queue_base = cur->msg_queue;
-            /* TODO: destroy this */
             pthread_mutex_init(&cur->room_msg_queue_lck, NULL);
       }
 
@@ -158,6 +159,10 @@ struct room_lst* rename_room_rml(struct rm_hash_lst* rml, int ref_no, char* new_
       return rl;
 }
 
+/* ~~~~~~~~~ room operations end ~~~~~~~~~~~ */
+
+/* ~~~~~~~~~ msg_queue operations begin ~~~~~~~~~~~ */
+
 _Bool insert_msg_msg_queue(struct room_lst* rm, char* msg, uid_t sender){
       _Bool resz = 0;
       pthread_mutex_lock(&rm->room_msg_queue_lck);
@@ -197,7 +202,10 @@ _Bool pop_msg_queue(struct room_lst* rm, char* msg, uid_t* sender){
       return ret;
 }
 
+/* ~~~~~~~~~ msg_queue operations end ~~~~~~~~~~~ */
+
 /* ~~~~~~~~~ communication begin ~~~~~~~~~~~ */
+
 int send_mb_r(struct mb_msg mb_a, int sock){
       int ret = 1;
       #ifdef ASH_DEBUG
