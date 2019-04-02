@@ -26,8 +26,10 @@ struct room_lst{
       // updates from host
        pthread_mutex_t room_msg_queue_lck;
 
-      /* last will only be set in first entry of an ind */
-      struct room_lst* next, * last;
+      /* bookend_rm will only be set in first and last entries of an ind
+       * wasting sizeof(struct room_lst*)*(bux-2) bytes... how do i sleep at night
+       */
+      struct room_lst* next, * bookend_rm;
 };
 
 struct rm_hash_lst{
