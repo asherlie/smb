@@ -95,15 +95,20 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
       // expensive lookup is done using ref_no from read_notif_pth
       int ind = *name % rml->bux;
       struct room_lst* cur;
+      /* first room in bucket */
       if(!rml->rooms[ind]){
             cur = rml->rooms[ind] = (rl) ? rl : malloc(sizeof(struct room_lst));
             rml->in_use[rml->n++] = ind;
       }
       else{
-            /* if rml->rooms[ind], last will be stored */
-            cur = rml->rooms[ind]->last->next = (rl) ? rl : malloc(sizeof(struct room_lst));
-            /* last is set to NULL in all entries but first of an an ind */
-            cur->last = NULL;
+            /* if rml->rooms[ind], we can assume a ptr to the last room is stored in bookend_rm */
+            cur = rml->rooms[ind]->bookend_rm->next = (rl) ? rl : malloc(sizeof(struct room_lst));
+            /* only first and last bookend_rm values should be set */
+            rml->rooms[ind]->bookend_rm->bookend_rm = NULL;
+            /* bookend_rm is set to first entry in last entry of an an ind 
+             * this allows for simple circular /n behavior
+             */
+            cur->bookend_rm = rml->rooms[ind];
       }
       if(!rl){
             cur->creator = creator;
@@ -120,7 +125,7 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
             pthread_mutex_init(&cur->room_msg_queue_lck, NULL);
       }
 
-      rml->rooms[ind]->last = cur;
+      rml->rooms[ind]->bookend_rm = cur;
 
       cur->next = NULL;
 
@@ -331,8 +336,6 @@ void* read_notif_pth(void* rnp_arg_v){
                         insert_msg_msg_queue(cur_r, buf, uid);
                         break;
 
-                  /* handling for predated label updates */
-
                   /* send out room name if it's requested */
 
                   case MSG_RNAME_UP_REQ:
@@ -439,8 +442,9 @@ void* repl_pth(void* rnp_arg_v){
                               break;
                         /* go to next room with same first character in label */
                         case 'n':
-                              if(!cur_room || !cur_room->next)break;
-                              cur_room = cur_room->next;
+                              if(!cur_room)break;
+                              /* to allow for circular cycling */
+                              cur_room = (cur_room->next) ? cur_room->next : cur_room->bookend_rm;
                               printf("%scurrent room has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
                               break;
                         case 'c':
