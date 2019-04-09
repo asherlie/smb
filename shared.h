@@ -30,3 +30,4 @@ struct mb_msg{
 };
 
 int listen_sock();
+_Bool strtoi(const char* str, int* i);

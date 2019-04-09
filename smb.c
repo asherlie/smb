@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <signal.h>
 
+#include "shared.h"
 #include "host.h"
 #include "client.h"
 
@@ -75,14 +76,6 @@ void p_usage(char* bname){
                   "  if the -dur flag is used to set a board time limit, the board will be\n"
                   "  removed after [hours] hours - otherwise, board will last for 5 days\n",
       bname);
-}
-
-_Bool strtoi(const char* str, int* i){
-      char* res;
-      int r = strtol(str, &res, 10);
-      if(*res)return 0;
-      *i = (int)r;
-      return 1;
 }
 
 int main(int a, char** b){
