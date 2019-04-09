@@ -67,9 +67,9 @@ char* sc_dir(char* path, char* sterm, int extlen, char* ext){
 }
 
 void p_usage(char* bname){
-      printf("usage:\n  %s {-[a]ny} {-[p]wd} {-[d]ur [hours]} {-C} [board_name] - creates or joins a board with name [board_name]\n"
-                  "                                            if board does not exist, even if -C is not passed, it is created\n\n"
-                  "  -C indicates create only mode\n\n"
+      printf("usage:\n  %s {-[a]ny} {-[p]wd} {-[d]ur [hours]} {-C} [board_name] - creates or joins a board with name [board_name]\n\n"
+                  "  -C indicates create only mode\n"
+                  "  if board does not exist, even if -C is not passed, it is created\n\n"
                   "  if the -pwd flag is set, the scope of smb's board creation\n"
                   "  and searching is limited to the current working directory\n\n"
                   "  if the -any flag is set, the first board that is found will be joined\n\n"
