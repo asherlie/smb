@@ -450,6 +450,14 @@ void* repl_pth(void* rnp_arg_v){
                               cur_room = tmp_rm;
                               printf("%scurrent room has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
                               break;
+                        /* go to room with ref_no */
+                        case 'g':
+                              if(!(tmp_p = strchr(inp, ' ')) || !strtoi(tmp_p+1, &tmp_ret))break;
+                              tmp_rm = room_lookup(*rnp_arg->rml, NULL, tmp_ret);
+                              if(!tmp_rm)break;
+                              cur_room = tmp_rm;
+                              printf("%scurrent room has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
+                              break;
                         /* go to next room with same first character in label */
                         case 'n':
                               if(!cur_room)break;
