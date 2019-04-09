@@ -275,6 +275,16 @@ int rm_board(int sock){
 
 /* ~~~~~~~~~ communication end ~~~~~~~~~~~ */
 
+/* get uname returns the username of a user given their uid */
+char* get_uname(uid_t uid, struct ash_table* table){
+      char* ret;
+      if((ret = lookup_str_ash_table(uid, table)))return ret;
+      struct passwd* pw = getpwuid(uid);
+      if(!pw)return "{UNKNOWN}";
+      insert_ash_table(uid, ret = pw->pw_name, NULL, table);
+      return ret;
+}
+
 /* run is accessed both from read_notif_pth and client() */
 /* once run is set to 0, client will safely exit */
 /* run is volatile because its value can be changed by SIGINTs */
@@ -507,9 +517,9 @@ void* repl_pth(void* rnp_arg_v){
 void ex(int x){(void)x; run = 0;}
 
 _Bool client(char* sock_path){
-      struct uname_table ut;
+      struct ash_table ut;
       /* TODO: free this struct */
-      uname_table_init(&ut, 100);
+      ash_table_init(&ut, 100);
 
       cur_room = NULL;
       int sock = listen_sock();
@@ -559,6 +569,6 @@ _Bool client(char* sock_path){
             usleep(10000);
       }
       free_rm_hash_lst(rml);
-      free_uname_table(&ut);
+      free_ash_table(&ut);
       return 1;
 }

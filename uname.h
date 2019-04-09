@@ -1,17 +1,19 @@
 #include <sys/types.h>
 
-struct name_entry{
-      uid_t uid;
+struct ash_entry{
+      int ref;
       /* man useradd - usernames are <= 32 chars */
       char name[33];
-      struct name_entry* next;
+      void* data;
+      struct ash_entry* next;
 };
 
-struct uname_table{
+struct ash_table{
       int bux;
-      struct name_entry** names;
+      struct ash_entry** names;
 };
 
-char* get_uname(uid_t uid, struct uname_table* table);
-struct uname_table* uname_table_init(struct uname_table* table, int bux);
-void free_uname_table(struct uname_table* table);
+_Bool insert_ash_table(int ref, char* name, void* data, struct ash_table* table);
+char* lookup_str_ash_table(int ref, struct ash_table* table);
+struct ash_table* ash_table_init(struct ash_table* table, int bux);
+void free_ash_table(struct ash_table* table);
