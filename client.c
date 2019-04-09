@@ -394,6 +394,8 @@ void p_help(){
             "/[j]oin [room_name]:\n"
             "/[r]oom [room_name]:\n" 
             "  join room with room_name\n"
+            "/[g]oto [ref_no]:\n" 
+            "  join room with reference number ref_no\n"
             "/[n]ext:\n"
             "  switch to next room with same first char as current\n"
             "/[c]reate [room_name]:\n"

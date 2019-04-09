@@ -37,6 +37,9 @@ client commands:
       /[r]room [room_name]:
             join room with room_name
 
+      /[g]oto [ref_no]:
+            join room with reference number ref_no
+
       /[n]ext:
             switch to next room with same first char as current
 
