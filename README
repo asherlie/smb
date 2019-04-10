@@ -15,6 +15,7 @@ usage:
       ./smb {-[a]ny} {-[p]wd} {-[d]ur [hours]} {-C} [board_name] - creates or joins a board with name [board_name]
 
 -C indicates create only mode
+if board does not exist, even if -C is not passed, it is created
 
 if the -pwd flag is set, the scope of smb's board creation
 and searching is limited to the current working directory
