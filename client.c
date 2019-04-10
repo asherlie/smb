@@ -24,6 +24,10 @@ struct rm_hash_lst init_rm_hash_lst(int buckets){
       rml.rooms = calloc(rml.bux, sizeof(struct room_lst*));
       rml.in_use = malloc(sizeof(int)*(rml.bux+1));
       memset(rml.in_use, -1, sizeof(int)*(rml.bux+1));
+
+      rml.ref_no_lookup = malloc(sizeof(struct ash_table));
+      ash_table_init(rml.ref_no_lookup, 100);
+
       return rml;
 }
 
@@ -42,6 +46,7 @@ void free_rm_hash_lst(struct rm_hash_lst rml){
       }
       free(rml.rooms);
       free(rml.in_use);
+      free_ash_table(rml.ref_no_lookup);
 }
 
 /* ~~~~~~~~~ room operations begin ~~~~~~~~~~~ */
@@ -51,6 +56,11 @@ void free_rm_hash_lst(struct rm_hash_lst rml){
  * for lookup and ref_nos are confirmed
  */
 struct room_lst* room_lookup(struct rm_hash_lst rml, char* rm_name, int ref_no){
+      /* TODO: i can just use another ash_table to store room_lst's hashed by *string
+       * the pointers can be to the same room_lst's 
+       */
+      if(ref_no != -1)return(struct room_lst*)lookup_data_ash_table(ref_no, rml.ref_no_lookup);
+
       /* if we don't find anything by hashing or iteratively, we should return
        * the last index of the relevant index for insertion
        */
@@ -68,6 +78,7 @@ struct room_lst* room_lookup(struct rm_hash_lst rml, char* rm_name, int ref_no){
             /*if(!rml.rooms[ind])return NULL;*/
                   for(struct room_lst* cur = rml.rooms[ind]; cur; cur = cur->next)
                         if(strstr(cur->label, rm_name)){
+                              /*we'll only get here if ref_no == -1*/
                               if(cur->ref_no == ref_no || ref_no == -1)return cur;
                               relevant = cur;
                         }
@@ -128,6 +139,9 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
       rml->rooms[ind]->bookend_rm = cur;
 
       cur->next = NULL;
+
+      /* TODO: define a single struct that is hashable strings and ints simultaneously */
+      insert_ash_table(ref_no, NULL, cur, rml->ref_no_lookup);
 
       return cur;
 }
