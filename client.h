@@ -39,6 +39,11 @@ struct rm_hash_lst{
 
       /* n is used only to keep track of in_use */
       int bux, n, * in_use;
+
+      /* an ash_table whose data fields are set to struct room_lst*'s 
+       * to allow for fast lookup by ref_no
+       */
+      struct ash_table* ref_no_lookup;
 };
 
 struct read_notif_pth_arg{

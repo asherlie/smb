@@ -37,9 +37,8 @@ struct ash_entry* lookup_ash_table(int ref, struct ash_table* table){
       if(ref < 0)return NULL;
       int ind = ref % table->bux;
       for(struct ash_entry* e = table->names[ind];
-          e; e = e->next){
+          e; e = e->next)
             if(e->ref == ref)return e;
-      }
       return NULL;
 }
 
