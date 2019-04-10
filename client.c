@@ -59,12 +59,11 @@ struct room_lst* room_lookup(struct rm_hash_lst rml, char* rm_name, int ref_no){
       /* TODO: i can just use another ash_table to store room_lst's hashed by *string
        * the pointers can be to the same room_lst's 
        */
-      if(ref_no != -1)return(struct room_lst*)lookup_data_ash_table(ref_no, rml.ref_no_lookup);
-
-      /* if we don't find anything by hashing or iteratively, we should return
-       * the last index of the relevant index for insertion
+      /* if this lookup fails, all hope is lost
+       * this is a helpful assumption to make because it allows us to ignore ref_no for
+       * the rest of this function
        */
-      struct room_lst* relevant;
+      if(ref_no != -1)return(struct room_lst*)lookup_data_ash_table(ref_no, rml.ref_no_lookup);
 
       if(rm_name){
             int ind = *rm_name % rml.bux;
@@ -77,23 +76,23 @@ struct room_lst* room_lookup(struct rm_hash_lst rml, char* rm_name, int ref_no){
             if(rml.rooms[ind]){
             /*if(!rml.rooms[ind])return NULL;*/
                   for(struct room_lst* cur = rml.rooms[ind]; cur; cur = cur->next)
-                        if(strstr(cur->label, rm_name)){
-                              /*we'll only get here if ref_no == -1*/
-                              if(cur->ref_no == ref_no || ref_no == -1)return cur;
-                              relevant = cur;
-                        }
+                        /* we'll only get here if ref_no == -1 */
+                        if(strstr(cur->label, rm_name))
+                              return cur;
             }
       }
+      /* if no ref_no and no rm_name */
+      /* we can assume rm_name for the rest of this function
+       */
+      else return NULL;
 
       /* if we've fallen through && rm_name, there's still hope - it won't come cheap though  */
 
       for(int i = 0; rml.in_use[i] != -1; ++i)
             for(struct room_lst* cur = rml.rooms[rml.in_use[i]]; cur; cur = cur->next)
-                  if((cur->ref_no == ref_no) || (rm_name && strstr(cur->label, rm_name)))return cur;
+                  if(strstr(cur->label, rm_name))return cur;
 
       return NULL;
-      return relevant;
-      /* TODO: relevant should be an optional param */
 }
 
 
