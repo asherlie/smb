@@ -1,7 +1,7 @@
 #include <limits.h>
 #include <pthread.h>
 
-#include "uname.h"
+#include "ash_table.h"
 
 struct msg_queue_entry{
       char msg[201];
