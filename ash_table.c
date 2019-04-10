@@ -3,7 +3,7 @@
 #include <string.h>
 #include <pwd.h>
 
-#include "uname.h"
+#include "ash_table.h"
 
 struct ash_table* ash_table_init(struct ash_table* table, int bux){
       if(!table)table = malloc(sizeof(struct ash_table));
@@ -33,13 +33,24 @@ _Bool insert_ash_table(int ref, char* name, void* data, struct ash_table* table)
       return init;
 }
 
-char* lookup_str_ash_table(int ref, struct ash_table* table){
+struct ash_entry* lookup_ash_table(int ref, struct ash_table* table){
+      if(ref < 0)return NULL;
       int ind = ref % table->bux;
       for(struct ash_entry* e = table->names[ind];
           e; e = e->next){
-            if(e->ref == ref)return e->name;
+            if(e->ref == ref)return e;
       }
       return NULL;
+}
+
+char* lookup_str_ash_table(int ref, struct ash_table* table){
+      struct ash_entry* e = lookup_ash_table(ref, table);
+      return e ? e->name : NULL;
+}
+
+void* lookup_data_ash_table(int ref, struct ash_table* table){
+      struct ash_entry* e = lookup_ash_table(ref, table);
+      return e ? e->data : NULL;
 }
 
 void free_ash_table(struct ash_table* table){
