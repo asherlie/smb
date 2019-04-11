@@ -141,39 +141,6 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
       return cur;
 }
 
-/* returns the room_lst* that has been inserted to rml, or NULL on failure */
-/* TODO: this needs a new name to reflect its insertion behavior */
-/* TODO: delete this function */
-struct room_lst* rename_room_rml(struct rm_hash_lst* rml, int ref_no, char* new_name, uid_t creator){
-      struct room_lst* rl = room_lookup(*rml, NULL, ref_no);
-      if(!rl)return add_room_rml(rml, ref_no, new_name, creator, NULL);
-      /* if rl is only entry in its bucket */
-      int bucket = *rl->label % rml->bux;
-      if(rml->rooms[bucket] == rl){
-            // in_use must be adjusted
-            for(int i = 0; rml->in_use[i] != -1; ++i){
-                  if(rml->in_use[i] == bucket){
-                        memmove(rml->in_use+i, rml->in_use+i+1, sizeof(int)*(--rml->n)-i);
-                        break;
-                  }
-            }
-      }
-      /* finding room_lst* before rl */
-      struct room_lst* rl_prev = rml->rooms[bucket];
-      if(rl_prev != rl){
-            for(; rl_prev->next != rl; rl_prev = rl_prev->next);
-            /* is this redundant? */
-            if(!rl_prev || !rl_prev->next)return NULL;
-            rl_prev->next = NULL;
-      }
-      else rml->rooms[bucket] = NULL;
-      /* rl must be moved from its current bucket */
-      strncpy(rl->label, new_name, sizeof(rl->label)-1);
-
-      add_room_rml(rml, ref_no, new_name, rl->creator, rl);
-      return rl;
-}
-
 /* ~~~~~~~~~ room operations end ~~~~~~~~~~~ */
 
 /* ~~~~~~~~~ msg_queue operations begin ~~~~~~~~~~~ */
@@ -253,17 +220,6 @@ int reply_room(int rm_ref_no, char* msg, int sock){
       return send_mb_r(mb_a, sock);
 }
 
-/* TODO: REMOVE THIS FUNCTION */
-/* deprecated - all MSG_RNAME_UP_INF messages are auto-sent from host.c */
-#if 0
-int req_rname_update(int rm_ref_no, int sock){
-      struct mb_msg mb_a;
-      mb_a.mb_inf[0] = MSG_RNAME_UP_REQ;
-      mb_a.mb_inf[1] = rm_ref_no;
-      memset(mb_a.str_arg, 0, 201);
-      return send_mb_r(mb_a, sock);
-}
-#endif
 int snd_rname_update(int rm_ref_no, char* rm_name, int sock){
       struct mb_msg mb_a;
       mb_a.mb_inf[0] = MSG_RNAME_UP_INF;
