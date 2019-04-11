@@ -1,5 +1,5 @@
 CC= gcc
-CFLAGS= -Wall -Wextra -Wpedantic -lpthread # -O3
+CFLAGS= -Wall -Wextra -Wpedantic -lpthread -O3
 CSRC = smb.c host.c client.c shared.c ash_table.c
 all: smb
 smb: $(CSRC)

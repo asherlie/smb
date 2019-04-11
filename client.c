@@ -208,7 +208,10 @@ _Bool pop_msg_queue(struct room_lst* rm, char* msg, uid_t* sender){
       if(rm->n_msg){
             *sender = rm->msg_queue->sender;
             /* if our char* is truncated by 1 byte, so be it */
-            strncpy(msg, rm->msg_queue->msg, 199);
+            /* using memccpy avoids warnings on linux 
+             * also, it's a cool POSIX built in that i didn't know about
+             */
+            memccpy(msg, rm->msg_queue->msg, 0, 199);
             ++rm->msg_queue; ++rm->msg_queue_cap; --rm->n_msg;
             ret = 1;
       }
@@ -364,10 +367,9 @@ void* read_notif_pth(void* rnp_arg_v){
                          * -- make sure that this should always evaluate to 1
                          */
                         /* this form should be depracated */
-                        if((cur_r = rename_room_rml(rnp_arg->rml, ref_no, buf, -1)))
-                              /* TODO: should a distinction be made between ROOM_CREATE and
-                               * ROOM_SHARE, for ex. printf("%s%i%s: %s[ROOM_SHARE]%s\n",);
-                               */
+                        if(!room_lookup(*rnp_arg->rml, NULL, ref_no) &&
+                          (cur_r = add_room_rml(rnp_arg->rml, ref_no, buf, -1, NULL)))
+                        /*if((cur_r = rename_room_rml(rnp_arg->rml, ref_no, buf, -1)))*/
                               printf("%s%s%s: %s[*ROOM_CREATE* %s]%s\n",
                               ANSI_GRE, get_uname(cur_r->creator, rnp_arg->uname_table),
                               ANSI_NON, ANSI_RED, buf, ANSI_NON);
