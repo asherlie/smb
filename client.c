@@ -67,14 +67,12 @@ struct room_lst* room_lookup(struct rm_hash_lst rml, char* rm_name, int ref_no){
 
       if(rm_name){
             int ind = *rm_name % rml.bux;
-            /* TODO: because indices are found using first letter hashed, room cannot
+            /* because indices are found using first letter hashed, room cannot
              * be cheaply found when rm_name a substring of room->label but doesn't include 
              * the first letter
-             * TODO: switch to ref_no based hashes
-             * THIS IS ANOTHER REASON TO SWITCH TO REF_NO HASHES
+             * this will only occur, though, when ref_no is not provided
              */
             if(rml.rooms[ind]){
-            /*if(!rml.rooms[ind])return NULL;*/
                   for(struct room_lst* cur = rml.rooms[ind]; cur; cur = cur->next)
                         /* we'll only get here if ref_no == -1 */
                         if(strstr(cur->label, rm_name))
@@ -101,8 +99,6 @@ struct room_lst* room_lookup(struct rm_hash_lst rml, char* rm_name, int ref_no){
 struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, uid_t creator, struct room_lst* rl){
       /* int ind = ref_no % rml->bux; */
       /* TODO: should more chars be summed for hashing */
-      // TODO: ref_no should be used for hashing because the most
-      // expensive lookup is done using ref_no from read_notif_pth
       int ind = *name % rml->bux;
       struct room_lst* cur;
       /* first room in bucket */
@@ -129,9 +125,9 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
             /* TODO: this should be done in a separate init_msg_queue func */
             cur->n_msg = 0;
             cur->msg_queue_cap = 50;
-            /* TODO: free */
             cur->msg_queue = malloc(sizeof(struct msg_queue_entry)*cur->msg_queue_cap);
             cur->msg_queue_base = cur->msg_queue;
+
             pthread_mutex_init(&cur->room_msg_queue_lck, NULL);
       }
 
@@ -342,9 +338,6 @@ void* read_notif_pth(void* rnp_arg_v){
                         ANSI_NON, ANSI_RED, buf, ANSI_NON);
                         break;
                   case MSGTYPE_MSG:
-                        // TODO: room lookup is too slow without label
-                        // TODO: should ref_no be used to hash?
-                        // this is the most frequent lookup
                         if((cur_r = room_lookup(*rnp_arg->rml, NULL, ref_no)))
                         /* this should never be reached with updated system */
                         /*
