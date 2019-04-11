@@ -143,6 +143,7 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
 
 /* returns the room_lst* that has been inserted to rml, or NULL on failure */
 /* TODO: this needs a new name to reflect its insertion behavior */
+/* TODO: delete this function */
 struct room_lst* rename_room_rml(struct rm_hash_lst* rml, int ref_no, char* new_name, uid_t creator){
       struct room_lst* rl = room_lookup(*rml, NULL, ref_no);
       if(!rl)return add_room_rml(rml, ref_no, new_name, creator, NULL);
@@ -252,6 +253,9 @@ int reply_room(int rm_ref_no, char* msg, int sock){
       return send_mb_r(mb_a, sock);
 }
 
+/* TODO: REMOVE THIS FUNCTION */
+/* deprecated - all MSG_RNAME_UP_INF messages are auto-sent from host.c */
+#if 0
 int req_rname_update(int rm_ref_no, int sock){
       struct mb_msg mb_a;
       mb_a.mb_inf[0] = MSG_RNAME_UP_REQ;
@@ -259,7 +263,7 @@ int req_rname_update(int rm_ref_no, int sock){
       memset(mb_a.str_arg, 0, 201);
       return send_mb_r(mb_a, sock);
 }
-
+#endif
 int snd_rname_update(int rm_ref_no, char* rm_name, int sock){
       struct mb_msg mb_a;
       mb_a.mb_inf[0] = MSG_RNAME_UP_INF;
@@ -342,13 +346,6 @@ void* read_notif_pth(void* rnp_arg_v){
                         break;
                   case MSGTYPE_MSG:
                         if((cur_r = room_lookup(*rnp_arg->rml, NULL, ref_no)))
-                        /* this should never be reached with updated system */
-                        /*
-                         *else{
-                         *      cur_r = add_room_rml(rnp_arg->rml, ref_no, "{UNKNOWN_LABEL}", uid, NULL);
-                         *      req_rname_update(ref_no, rnp_arg->sock);
-                         *}
-                         */
                         /* adding message to msg stack */
                         /* if the above code is being used, no need to check cur_r */
                         // if(cur_r)insert_msg_msg_queue(cur_r, buf, uid);
@@ -363,17 +360,15 @@ void* read_notif_pth(void* rnp_arg_v){
                         snd_rname_update(ref_no, cur_r->label, rnp_arg->sock);
                         break;
                   case MSG_RNAME_UP_INF:
-                        /* TODO: confirm that no else condition is required
-                         * -- make sure that this should always evaluate to 1
+                        /* if room is found, we don't know what to do 
+                         * this should never happen
+                         * TODO: look into removing this check
                          */
-                        /* this form should be depracated */
                         if(!room_lookup(*rnp_arg->rml, NULL, ref_no) &&
                           (cur_r = add_room_rml(rnp_arg->rml, ref_no, buf, -1, NULL)))
-                        /*if((cur_r = rename_room_rml(rnp_arg->rml, ref_no, buf, -1)))*/
                               printf("%s%s%s: %s[*ROOM_CREATE* %s]%s\n",
                               ANSI_GRE, get_uname(cur_r->creator, rnp_arg->uname_table),
                               ANSI_NON, ANSI_RED, buf, ANSI_NON);
-                        /*else add new rm*/
                         break;
                   case MSG_N_MEM_INF:
                         /* TODO: should rml have a member for n_mems? */
