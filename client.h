@@ -11,7 +11,7 @@ struct msg_queue_entry{
 /* hashed array of thread linked lists */
 struct room_lst{
       uid_t creator;
-      int ref_no, n_msg, msg_queue_cap;
+      int ref_no, n_msg, msg_queue_cap, msg_queue_base_sz;
 
       char label[50];
 

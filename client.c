@@ -124,7 +124,7 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
             /* msg queue! */
             /* TODO: this should be done in a separate init_msg_queue func */
             cur->n_msg = 0;
-            cur->msg_queue_cap = 50;
+            cur->msg_queue_base_sz = cur->msg_queue_cap = 10;
             cur->msg_queue = malloc(sizeof(struct msg_queue_entry)*cur->msg_queue_cap);
             cur->msg_queue_base = cur->msg_queue;
 
@@ -150,7 +150,7 @@ _Bool insert_msg_msg_queue(struct room_lst* rm, char* msg, uid_t sender){
       pthread_mutex_lock(&rm->room_msg_queue_lck);
       if(rm->n_msg == rm->msg_queue_cap){
             resz = 1;
-            rm->msg_queue_cap *= 2;
+            rm->msg_queue_cap = (rm->msg_queue_cap) ? rm->msg_queue_cap*2 : rm->msg_queue_base_sz;
             struct msg_queue_entry* tmp = malloc(sizeof(struct msg_queue_entry)*rm->msg_queue_cap);
             memcpy(tmp, rm->msg_queue, sizeof(struct msg_queue_entry)*rm->n_msg);
             free(rm->msg_queue_base);
@@ -180,7 +180,12 @@ _Bool pop_msg_queue(struct room_lst* rm, char* msg, uid_t* sender){
              * also, it's a cool POSIX built in that i didn't know about
              */
             memccpy(msg, rm->msg_queue->msg, 0, 199);
-            ++rm->msg_queue; ++rm->msg_queue_cap; --rm->n_msg;
+
+            /* reasoning behind the line below
+             * cap 5, n_msg 3  -> cap 4, n_msg 2
+             * [0, 1, 2, _, _] -> [1, 2, _, _]
+             */
+            ++rm->msg_queue; --rm->msg_queue_cap; --rm->n_msg;
             ret = 1;
       }
       pthread_mutex_unlock(&rm->room_msg_queue_lck);
