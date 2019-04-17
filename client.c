@@ -49,6 +49,64 @@ void free_rm_hash_lst(struct rm_hash_lst rml){
       free_ash_table(rml.ref_no_lookup);
 }
 
+/* ~~~~~~~~~ msg_queue operations begin ~~~~~~~~~~~ */
+
+void init_msg_queue(struct room_lst* rm, int q_cap){
+      rm->n_msg = 0;
+      rm->msg_queue_base_sz = rm->msg_queue_cap = q_cap;
+      rm->msg_queue = malloc(sizeof(struct msg_queue_entry)*rm->msg_queue_cap);
+      rm->msg_queue_base = rm->msg_queue;
+}
+
+_Bool insert_msg_msg_queue(struct room_lst* rm, char* msg, uid_t sender){
+      _Bool resz = 0;
+      pthread_mutex_lock(&rm->room_msg_queue_lck);
+      if(rm->n_msg == rm->msg_queue_cap){
+            resz = 1;
+            rm->msg_queue_cap = (rm->msg_queue_cap) ? rm->msg_queue_cap*2 : rm->msg_queue_base_sz;
+            struct msg_queue_entry* tmp = malloc(sizeof(struct msg_queue_entry)*rm->msg_queue_cap);
+            memcpy(tmp, rm->msg_queue, sizeof(struct msg_queue_entry)*rm->n_msg);
+            free(rm->msg_queue_base);
+            rm->msg_queue_base = rm->msg_queue = tmp;
+      }
+
+      struct msg_queue_entry tmp_entry;
+      memset(tmp_entry.msg, 0, 201);
+      tmp_entry.sender = sender;
+      /* memcpy'ing because we want all 200 bytes
+       * this lets the user avoid clearing msg
+       */
+      memcpy(tmp_entry.msg, msg, 200);
+
+      rm->msg_queue[rm->n_msg++] = tmp_entry;
+      pthread_mutex_unlock(&rm->room_msg_queue_lck);
+      return resz;
+}
+
+_Bool pop_msg_queue(struct room_lst* rm, char* msg, uid_t* sender){
+      _Bool ret = 0;
+      pthread_mutex_lock(&rm->room_msg_queue_lck);
+      if(rm->n_msg){
+            *sender = rm->msg_queue->sender;
+            /* if our char* is truncated by 1 byte, so be it */
+            /* using memccpy avoids warnings on linux 
+             * also, it's a cool POSIX built in that i didn't know about
+             */
+            memccpy(msg, rm->msg_queue->msg, 0, 199);
+
+            /* reasoning behind the line below
+             * cap 5, n_msg 3  -> cap 4, n_msg 2
+             * [0, 1, 2, _, _] -> [1, 2, _, _]
+             */
+            ++rm->msg_queue; --rm->msg_queue_cap; --rm->n_msg;
+            ret = 1;
+      }
+      pthread_mutex_unlock(&rm->room_msg_queue_lck);
+      return ret;
+}
+
+/* ~~~~~~~~~ msg_queue operations end ~~~~~~~~~~~ */
+
 /* ~~~~~~~~~ room operations begin ~~~~~~~~~~~ */
 
 /* looks up a thread by its label or ref_no 
@@ -122,11 +180,8 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
             strncpy(cur->label, name, sizeof(cur->label)-1);
 
             /* msg queue! */
-            /* TODO: this should be done in a separate init_msg_queue func */
-            cur->n_msg = 0;
-            cur->msg_queue_base_sz = cur->msg_queue_cap = 10;
-            cur->msg_queue = malloc(sizeof(struct msg_queue_entry)*cur->msg_queue_cap);
-            cur->msg_queue_base = cur->msg_queue;
+
+            init_msg_queue(cur, 10);
 
             pthread_mutex_init(&cur->room_msg_queue_lck, NULL);
       }
@@ -142,57 +197,6 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
 }
 
 /* ~~~~~~~~~ room operations end ~~~~~~~~~~~ */
-
-/* ~~~~~~~~~ msg_queue operations begin ~~~~~~~~~~~ */
-
-_Bool insert_msg_msg_queue(struct room_lst* rm, char* msg, uid_t sender){
-      _Bool resz = 0;
-      pthread_mutex_lock(&rm->room_msg_queue_lck);
-      if(rm->n_msg == rm->msg_queue_cap){
-            resz = 1;
-            rm->msg_queue_cap = (rm->msg_queue_cap) ? rm->msg_queue_cap*2 : rm->msg_queue_base_sz;
-            struct msg_queue_entry* tmp = malloc(sizeof(struct msg_queue_entry)*rm->msg_queue_cap);
-            memcpy(tmp, rm->msg_queue, sizeof(struct msg_queue_entry)*rm->n_msg);
-            free(rm->msg_queue_base);
-            rm->msg_queue_base = rm->msg_queue = tmp;
-      }
-
-      struct msg_queue_entry tmp_entry;
-      memset(tmp_entry.msg, 0, 201);
-      tmp_entry.sender = sender;
-      /* memcpy'ing because we want all 200 bytes
-       * this lets the user avoid clearing msg
-       */
-      memcpy(tmp_entry.msg, msg, 200);
-
-      rm->msg_queue[rm->n_msg++] = tmp_entry;
-      pthread_mutex_unlock(&rm->room_msg_queue_lck);
-      return resz;
-}
-
-_Bool pop_msg_queue(struct room_lst* rm, char* msg, uid_t* sender){
-      _Bool ret = 0;
-      pthread_mutex_lock(&rm->room_msg_queue_lck);
-      if(rm->n_msg){
-            *sender = rm->msg_queue->sender;
-            /* if our char* is truncated by 1 byte, so be it */
-            /* using memccpy avoids warnings on linux 
-             * also, it's a cool POSIX built in that i didn't know about
-             */
-            memccpy(msg, rm->msg_queue->msg, 0, 199);
-
-            /* reasoning behind the line below
-             * cap 5, n_msg 3  -> cap 4, n_msg 2
-             * [0, 1, 2, _, _] -> [1, 2, _, _]
-             */
-            ++rm->msg_queue; --rm->msg_queue_cap; --rm->n_msg;
-            ret = 1;
-      }
-      pthread_mutex_unlock(&rm->room_msg_queue_lck);
-      return ret;
-}
-
-/* ~~~~~~~~~ msg_queue operations end ~~~~~~~~~~~ */
 
 /* ~~~~~~~~~ communication begin ~~~~~~~~~~~ */
 
