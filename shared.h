@@ -24,6 +24,8 @@
 #define ANSI_BLU   "\x1b[34m"
 #define ANSI_MGNTA "\x1b[35m"
 
+#define SMB_VER    "1.0.0"
+
 struct mb_msg{
       int mb_inf[2];
       char str_arg[201];
