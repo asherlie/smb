@@ -12,6 +12,7 @@
 
 #include "client.h"
 #include "shared.h"
+#include "raw.h"
 
 struct room_lst* cur_room;
 
@@ -305,7 +306,7 @@ void* read_notif_pth(void* rnp_arg_v){
             switch(msg_type){
                   case MSGTYPE_NOTIF:
                         add_room_rml(rnp_arg->rml, ref_no, buf, uid, NULL);
-                        printf("%s%s%s: %s[ROOM_CREATE %s]%s\n",
+                        printf("%s%s%s: %s[ROOM_CREATE %s]%s\r\n",
                         ANSI_GRE, get_uname(uid, rnp_arg->uname_table),
                         ANSI_NON, ANSI_RED, buf, ANSI_NON);
                         break;
@@ -331,7 +332,7 @@ void* read_notif_pth(void* rnp_arg_v){
                          */
                         if(!room_lookup(*rnp_arg->rml, NULL, ref_no) &&
                           (cur_r = add_room_rml(rnp_arg->rml, ref_no, buf, -1, NULL)))
-                              printf("%s%s%s: %s[*ROOM_CREATE* %s]%s\n",
+                              printf("%s%s%s: %s[*ROOM_CREATE* %s]%s\r\n",
                               ANSI_GRE, get_uname(cur_r->creator, rnp_arg->uname_table),
                               ANSI_NON, ANSI_RED, buf, ANSI_NON);
                         break;
@@ -340,14 +341,17 @@ void* read_notif_pth(void* rnp_arg_v){
                         /* TODO: should /l print number of members */
                         if(!rnp_arg->n_mem_req)break;
                         rnp_arg->n_mem_req = 0;
-                        printf("%s%i%s member%s connected to %s**%s%s%s**%s\n",
+                        printf("%s%i%s member%s connected to %s**%s%s%s**%s\r\n",
                         /* n_members are sent in the ref_no buf */
                         ANSI_RED, ref_no, ANSI_MGNTA, (ref_no > 1) ? "s are" : " is",
                         ANSI_RED, ANSI_MGNTA, rnp_arg->rml->board_path, ANSI_RED, ANSI_NON);
                         break;
             }
       }
-      /*printf("%slost connection to board%s\n", ANSI_RED, ANSI_NON);*/
+      /* since getline_raw is likely waiting and only resets terminal to cooked mode on exit
+       * it's smart to reset terminal here
+       */
+      reset_term();
       printf("%sboard has been removed%s\n", ANSI_RED, ANSI_NON);
       run = 0;
       return NULL;
@@ -392,13 +396,24 @@ void* repl_pth(void* rnp_arg_v){
       struct room_lst* tmp_rm;
 
       char* inp = NULL, * tmp_p;
-      size_t sz = 0;
       int b_read, tmp_ret;
+      _Bool good_msg;
 
-      while((b_read = getline(&inp, &sz, stdin)) != EOF){
-            inp[--b_read] = 0;
+      while((inp = tab_complete(
+                   (cur_room) ? cur_room->msg_queue_base : NULL,
+                   sizeof(struct msg_queue_entry),
+                   /* offset into struct msg_queue_entry where msg can be found - should be zero */
+                   (cur_room) ? (char*)cur_room->msg_queue->msg - (char*)cur_room->msg_queue : 0,
+                   (cur_room) ? (cur_room->msg_queue-cur_room->msg_queue_base) : 0,
+                   14,
+                   &b_read
+                   ))){
+
+            good_msg = 1;
+            putchar('\r');
 
             if(*inp == '/' && b_read > 1){
+                  good_msg = 0;
                   switch(inp[1]){
                         #ifdef ASH_DEBUG
                         case 'p':
@@ -481,14 +496,25 @@ void* repl_pth(void* rnp_arg_v){
                         case 'h':
                               p_help();
                               break;
+                        default:
+                              good_msg = 1;
+                              break;
                   }
             }
             /* we're sending a regular message */
-            else if(!cur_room)
-                  printf("%syou must first enter a room before replying%s\n", ANSI_RED, ANSI_NON);
-            else
+            if(!cur_room){
+                  /* we could have been sent here by a bad command breaking */
+                  if(good_msg)printf("%syou must first enter a room before replying%s\n", ANSI_RED, ANSI_NON);
+                  else{
+                        putchar('\r');
+                        for(int i = 0; i < b_read; ++i)putchar(' ');
+                        putchar('\r');
+                  }
+            }
+            else if(good_msg)
                   reply_room(cur_room->ref_no, inp, rnp_arg->sock);
       }
+      kill(getpid(), SIGINT);
       return NULL;
 }
 
@@ -543,7 +569,7 @@ _Bool client(char* sock_path){
 
       while(run){
             if(cur_room && pop_msg_queue(cur_room, tmp_p, &s_uid))
-                  printf("%s%s%s: %s\n", ANSI_GRE, get_uname(s_uid, &ut), ANSI_NON, tmp_p);
+                  printf("%s%s%s: %s\r\n", ANSI_GRE, get_uname(s_uid, &ut), ANSI_NON, tmp_p);
             usleep(10000);
       }
       free_rm_hash_lst(rml);

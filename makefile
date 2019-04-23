@@ -1,6 +1,6 @@
 CC= gcc
 CFLAGS= -Wall -Wextra -Wpedantic -lpthread -O3
-CSRC = smb.c host.c client.c shared.c ash_table.c
+CSRC = smb.c host.c client.c shared.c ash_table.c raw.c
 all: smb
 smb: $(CSRC)
 db: $(CSRC)
