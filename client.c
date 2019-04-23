@@ -404,7 +404,8 @@ void* repl_pth(void* rnp_arg_v){
                    sizeof(struct msg_queue_entry),
                    /* offset into struct msg_queue_entry where msg can be found - should be zero */
                    (cur_room) ? (char*)cur_room->msg_queue->msg - (char*)cur_room->msg_queue : 0,
-                   (cur_room) ? (cur_room->msg_queue-cur_room->msg_queue_base) : 0,
+                   /* number of cached messages */
+                   (cur_room) ? (cur_room->msg_queue-cur_room->msg_queue_base)+1 : 0,
                    14,
                    &b_read
                    ))){
