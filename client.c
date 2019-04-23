@@ -417,9 +417,8 @@ void* repl_pth(void* rnp_arg_v){
                   switch(inp[1]){
                         #ifdef ASH_DEBUG
                         case 'p':
-                              for(int i = 0; i < 10; ++i){
+                              for(int i = 0; i < 10; ++i)
                                     printf("in_use[%i] == %i\n", i, rnp_arg->rml->in_use[i]);
-                              }
                               break;
                         #endif
                         /* both /join and /room will join an existing room */
