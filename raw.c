@@ -101,7 +101,7 @@ char* tab_complete(void* data_douplep, int data_blk_sz, int data_offset, int opt
                               found_m = 1;
 
                               /* printing match to screen and removing chars from * old string */
-                              tmplen = (tmp_ch == ret) ? *bytes_read : strlen(tmp_ch);
+                              tmplen = (tmp_ch == ret) ? *bytes_read : (int)strlen(tmp_ch);
                               putchar('\r');
                               printf("%s", tmp_ch);
                               if(tmplen > maxlen)maxlen = tmplen;
