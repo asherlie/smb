@@ -397,7 +397,7 @@ void* repl_pth(void* rnp_arg_v){
 
       char* inp = NULL, * tmp_p;
       int b_read, tmp_ret;
-      _Bool good_msg;
+      _Bool good_msg, free_s;
 
       while((inp = tab_complete(
                    (cur_room) ? cur_room->msg_queue_base : NULL,
@@ -407,7 +407,8 @@ void* repl_pth(void* rnp_arg_v){
                    /* number of cached messages */
                    (cur_room) ? (cur_room->msg_queue-cur_room->msg_queue_base)+1 : 0,
                    14,
-                   &b_read
+                   &b_read,
+                   &free_s
                    ))){
 
             good_msg = 1;
@@ -513,6 +514,7 @@ void* repl_pth(void* rnp_arg_v){
             }
             else if(good_msg)
                   reply_room(cur_room->ref_no, inp, rnp_arg->sock);
+            if(free_s)free(inp);
       }
       kill(getpid(), SIGINT);
       return NULL;

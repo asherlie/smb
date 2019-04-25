@@ -77,11 +77,16 @@ char* getline_raw(int* bytes_read, _Bool* tab, int* ignore){
 /* data_offset is offset into data where char* can be found
  * this is set to 0 if data_douplep is a char*
  */
-/* tab_complete behaves like getline(), but does not include \n char in returned string
- */
-char* tab_complete(void* data_douplep, int data_blk_sz, int data_offset, int optlen, char iter_opts, int* bytes_read){
+/* tab_complete behaves like getline(), but does not include \n char in returned string */
+/* *free_s is set to 1 if returned buffer should be freed */
+char* tab_complete(void* data_douplep, int data_blk_sz, int data_offset, int optlen,
+                   char iter_opts, int* bytes_read, _Bool* free_s){
       _Bool tab, found_m;
+      /* this should be called until enter is sent
+       * results should be appeded to a master string
+       */
       char* ret = getline_raw(bytes_read, &tab, NULL), * tmp_ch;
+      *free_s = 0;
       if(tab && data_douplep){
             found_m = 0;
             _Bool select = 0;
@@ -114,7 +119,10 @@ char* tab_complete(void* data_douplep, int data_blk_sz, int data_offset, int opt
                               while(((ch = getc(stdin)))){
                                     if(ch == '\r'){
                                           *bytes_read = tmplen;
-                                          if(ret != tmp_ch)free(ret);
+                                          if(ret != tmp_ch){
+                                                free(ret);
+                                                *free_s = 0;
+                                          }
                                           ret = tmp_ch;
                                           select = 1;
                                           break;
