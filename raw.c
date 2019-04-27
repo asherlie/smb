@@ -86,7 +86,7 @@ char* tab_complete(void* data_douplep, int data_blk_sz, int data_offset, int opt
        * results should be appeded to a master string
        */
       char* ret = getline_raw(bytes_read, &tab, NULL), * tmp_ch;
-      *free_s = 0;
+      *free_s = 1;
       if(tab && data_douplep){
             found_m = 0;
             _Bool select = 0;
@@ -117,13 +117,19 @@ char* tab_complete(void* data_douplep, int data_blk_sz, int data_offset, int opt
 
                               char ch;
                               while(((ch = getc(stdin)))){
+                                    if(ch == 3){
+                                          if(*free_s)free(ret);
+                                          ret = NULL;
+                                          select = 1;
+                                          break;
+                                    }
                                     if(ch == '\r'){
                                           *bytes_read = tmplen;
                                           if(ret != tmp_ch){
                                                 free(ret);
                                                 *free_s = 0;
+                                                ret = tmp_ch;
                                           }
-                                          ret = tmp_ch;
                                           select = 1;
                                           break;
                                     }
