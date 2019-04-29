@@ -12,7 +12,7 @@
 
 #include "client.h"
 #include "shared.h"
-#include "raw.h"
+#include "ashio.h"
 
 struct room_lst* cur_room;
 
