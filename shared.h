@@ -1,9 +1,5 @@
 #define _GNU_SOURCE
 
-/* TODO: consolidate macros */
-
-#define MSGTYPE_NOTIF     0 
-
 #define MSG_CREATE_THREAD 2
 #define MSG_REPLY_THREAD  4
 
@@ -23,7 +19,7 @@
 #define ANSI_BLU   "\x1b[34m"
 #define ANSI_MGNTA "\x1b[35m"
 
-#define SMB_VER    "1.1.4"
+#define SMB_VER    "1.1.5"
 
 struct mb_msg{
       int mb_inf[2];

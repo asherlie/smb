@@ -304,7 +304,7 @@ void* read_notif_pth(void* rnp_arg_v){
             #endif
 
             switch(msg_type){
-                  case MSGTYPE_NOTIF:
+                  case MSG_CREATE_THREAD:
                         add_room_rml(rnp_arg->rml, ref_no, buf, uid, NULL);
                         printf("%s%s%s: %s[ROOM_CREATE %s]%s\r\n",
                         ANSI_GRE, get_uname(uid, rnp_arg->uname_table),

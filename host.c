@@ -265,7 +265,7 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
                   log_f("room created with string:");
                   log_f(str_arg);
                   log_f("end_str");
-                  spread_notif(MSGTYPE_NOTIF, peers, n_peers, assign_ref_no(), str_arg, sender);
+                  spread_notif(MSG_CREATE_THREAD, peers, n_peers, assign_ref_no(), str_arg, sender);
                   break;
             case MSG_REMOVE_BOARD:
                   log_f("remove board called with following uid's");
