@@ -50,7 +50,7 @@ char* getline_raw(int* bytes_read, _Bool* tab, int* ignore){
                   break;
             }
             /* delete */
-            if(c == 127){
+            if(c == 8 || c == 127){
                   if(*bytes_read == 0)continue;
                   ret[--(*bytes_read)] = 0;
                   printf("\r%s%c\r%s", ret, ' ', ret);
