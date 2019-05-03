@@ -310,7 +310,7 @@ void* read_notif_pth(void* rnp_arg_v){
                         ANSI_GRE, get_uname(uid, rnp_arg->uname_table),
                         ANSI_NON, ANSI_RED, buf, ANSI_NON);
                         break;
-                  case MSGTYPE_MSG:
+                  case MSG_REPLY_THREAD:
                         if((cur_r = room_lookup(*rnp_arg->rml, NULL, ref_no)))
                         /* adding message to msg stack */
                         /* if the above code is being used, no need to check cur_r */

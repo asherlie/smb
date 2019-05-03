@@ -136,7 +136,7 @@ _Bool spread_msg(int* peers, int n_peers, int ref_no, char* msg, uid_t sender_ui
       arg.n_peers = n_peers;
       arg.ref_no = ref_no;
       arg.msg_buf = msg;
-      arg.msg_type = MSGTYPE_MSG;
+      arg.msg_type = MSG_REPLY_THREAD;
       arg.sender = sender_uid;
       memset(arg.msg, 0, 201);
 
