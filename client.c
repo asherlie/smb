@@ -156,8 +156,6 @@ struct room_lst* room_lookup(struct rm_hash_lst rml, char* rm_name, int ref_no){
 /* return existence of ref_no */
 /* param rl is optional - in case rl is already malloc'd - this happens when a name is being updated */
 struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, uid_t creator, struct room_lst* rl){
-      /* int ind = ref_no % rml->bux; */
-      /* TODO: should more chars be summed for hashing */
       int ind = *name % rml->bux;
       struct room_lst* cur;
       /* first room in bucket */
@@ -426,7 +424,6 @@ void* repl_pth(void* rnp_arg_v){
                         /* both /join and /room will join an existing room */
                         case 'j':
                         case 'r':
-                              /* TODO: rooms should be joinable by ref_no */
                               if(!(tmp_p = strchr(inp, ' ')))break;
                               tmp_rm = room_lookup(*rnp_arg->rml, tmp_p+1, -1);
                               if(!tmp_rm){
@@ -524,7 +521,6 @@ void ex(int x){(void)x; run = 0;}
 
 _Bool client(char* sock_path){
       struct ash_table ut;
-      /* TODO: free this struct */
       ash_table_init(&ut, 100);
 
       cur_room = NULL;
