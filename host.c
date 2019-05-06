@@ -244,6 +244,11 @@ int assign_ref_no(){
       return ret;
 }
 
+void host_cleanup(){
+      free(ruc.sp);
+      pthread_mutex_destroy(&peer_mut);
+}
+
 /* TODO: add petition functionality!! */
 /* pea should be compatible with no alterations */
 _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
@@ -259,7 +264,10 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
                   log_f("remove board called with following uid's");
                   log_f_int(getuid());
                   log_f_int(sender);
-                  if(sender == getuid())exit(EXIT_SUCCESS);
+                  if(sender == getuid()){
+                        host_cleanup();
+                        exit(EXIT_SUCCESS);
+                  }
                   break;
             case MSG_REPLY_THREAD:
                   spread_msg(peers, n_peers, ref_no, str_arg, sender);
@@ -298,7 +306,6 @@ void init_peers(_Bool init_mut){
       n_peers = 0;
       peers = malloc(sizeof(int)*peer_cap);
       if(!init_mut)return;
-      /* TODO: destroy this */
       pthread_mutex_init(&peer_mut, NULL);
 }
 
@@ -461,6 +468,7 @@ int create_mb(char* name, int duration_hrs){
 
       /* this will keep host waiting indefinitely */
       // pthread_join(add_host_pth_pth, NULL);
+      host_cleanup();
       
       return 1;
 }
