@@ -60,15 +60,10 @@ uid_t get_peer_cred(int p_sock){
       return uid;
 }
 
-/* TODO: this doesn't need its own thread */
-/* especially since it is joined before the calling thread continues */
-/* TODO: verify this - notify is only called from within mb_handler */
-/* with the exception of pass_rname_up_req in add_host */
 /* arg->socks will be maintained in the host loop @ create_mb */
 /* v_arg->retval is set to 0 upon success, -1 otherwise */
-void* notify_pth(void* v_arg){
-      log_f("notify_pth called");
-      struct notif_arg* arg = (struct notif_arg*)v_arg;
+/* returns whether a member has disconnected */
+_Bool notify(struct notif_arg* arg){
       arg->retval = 0;
 
       pthread_mutex_lock(&peer_mut); 
@@ -104,17 +99,6 @@ void* notify_pth(void* v_arg){
             }
       }
       pthread_mutex_unlock(&peer_mut); 
-      log_f("returning notify_pth");
-      return NULL;
-}
-
-/* returns whether a member has disconnected */
-_Bool notify(struct notif_arg* arg){
-      pthread_t pth;
-      /* TODO: this doesn't need to occur in a separate thread */
-      /*notify_pth(arg);*/
-      pthread_create(&pth, NULL, &notify_pth, arg);
-      pthread_join(pth, NULL);
       return arg->retval != -1;
 }
 
@@ -404,7 +388,6 @@ void add_host(int sock){
             pass_rname_up_req(peers, n_peers, i, sock, &ruc);
 }
 
-there's a thread that constantly adds hosts, adding hosts calls notify in a thread
 void* add_host_pth(void* local_sock_v){
       int sock = *((int*)local_sock_v);
       while(1)add_host(accept(sock, NULL, NULL));
