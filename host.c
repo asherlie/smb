@@ -387,6 +387,10 @@ void add_host(int sock){
       pthread_create(&read_cl_pth_pth, NULL, &read_cl_pth, (peers+n_peers)-1);
       pthread_detach(read_cl_pth_pth);
 
+      /*
+       *can't lock here - notify(), which is called by pass_rname_up_req(), locks on peer_mut
+       *how can i ensure that `peers` isn't changed in this loop
+       */
       /* TODO: make sure it's safe to access peers from here */
       for(int i = 0; i < /* TODO: safely! */u_ref_no; ++i)
             /* even if ref_no i doesn't exist, this request can
