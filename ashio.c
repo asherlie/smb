@@ -110,7 +110,7 @@ char* tab_complete(void* data_douplep, int data_blk_sz, int data_offset, int opt
                               putchar('\r');
                               printf("%s", tmp_ch);
                               if(tmplen > maxlen)maxlen = tmplen;
-                              for(int i = 0; i < maxlen-tmplen; ++i)putchar(' ');
+                              for(int j = 0; j < maxlen-tmplen; ++j)putchar(' ');
                               putchar('\r');
 
                               raw_mode();
