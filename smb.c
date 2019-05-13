@@ -131,7 +131,9 @@ int main(int a, char** b){
             char* board;
             if((board = sc_dir(".", any ? NULL : b[cre_arg], 5, ".smbr")) ||
                (board = sc_dir("/var/tmp", any ? NULL : b[cre_arg], 5, ".smbr"))){
-                  if(!client(board))remove(board);
+                  _Bool cli = client(board);
+                  free(board);
+                  if(!cli)remove(board);
                   else return 0;
             }
       }
