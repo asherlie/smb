@@ -48,6 +48,7 @@ void free_rm_hash_lst(struct rm_hash_lst rml){
       free(rml.rooms);
       free(rml.in_use);
       free_ash_table(rml.ref_no_lookup);
+      free(rml.ref_no_lookup);
 }
 
 /* ~~~~~~~~~ msg_queue operations begin ~~~~~~~~~~~ */

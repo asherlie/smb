@@ -156,5 +156,7 @@ int main(int a, char** b){
                   printf("could not start client on %s\n", ext);
             else return 0;
       }
+      /* if sock already exists, remove it */
+      else remove(ext);
       return 1;
 }

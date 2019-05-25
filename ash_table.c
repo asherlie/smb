@@ -8,6 +8,10 @@
 struct ash_table* ash_table_init(struct ash_table* table, int bux){
       if(!table)table = malloc(sizeof(struct ash_table));
       table->bux = bux;
+      /* this is causing an internal leak
+       * the leak cannot occur from free_ash_table
+       * because it frees table->names
+       */
       table->names = calloc(table->bux, sizeof(struct ash_entry*));
       return table;
 }
@@ -36,8 +40,7 @@ _Bool insert_ash_table(int ref, char* name, void* data, struct ash_table* table)
 struct ash_entry* lookup_ash_table(int ref, struct ash_table* table){
       if(ref < 0)return NULL;
       int ind = ref % table->bux;
-      for(struct ash_entry* e = table->names[ind];
-          e; e = e->next)
+      for(struct ash_entry* e = table->names[ind]; e; e = e->next)
             if(e->ref == ref)return e;
       return NULL;
 }
