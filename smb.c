@@ -148,7 +148,8 @@ int main(int a, char** b){
       (strchr(b[cre_arg], '/') || lim_pwd) ? "%s.smbr" : "/var/tmp/%s.smbr",
       b[cre_arg]);
       /* create_mb returns 2 from client process */
-      if(create_mb(ext, dur) == 2){
+      int cmb;
+      if((cmb = create_mb(ext, dur)) == 2){
             if(create)return 0;
 
             usleep(10000);
@@ -157,6 +158,7 @@ int main(int a, char** b){
             else return 0;
       }
       /* if sock already exists, remove it */
-      else remove(ext);
+      else if(!cmb)remove(ext);
+
       return 1;
 }
