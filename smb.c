@@ -147,24 +147,14 @@ int main(int a, char** b){
       snprintf(ext, PATH_MAX,
       (strchr(b[cre_arg], '/') || lim_pwd) ? "%s.smbr" : "/var/tmp/%s.smbr",
       b[cre_arg]);
-      /* create_mb returns 2 from client process */
-      int cmb;
-/*
- *      if((cmb = create_mb(ext, dur)) == 2){
- *            if(create)return 0;
- *
- *            usleep(10000);
- *            if(!client(ext))
- *                  printf("could not start client on %s\n", ext);
- *            else return 0;
- *      }
- *      else if(!cmb)remove(ext);
- */
 
       /* we're going to be trying to create a board twice
        * second time is in case an orphan socket exists
        */
+      int cmb;
       for(int i = 0; i < 2; ++i){
+
+            /* create_mb returns 2 from client process */
             if((cmb = create_mb(ext, dur)) == 2){
                   if(create)return 0;
 
