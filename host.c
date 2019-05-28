@@ -418,10 +418,7 @@ int create_mb(char* name, int duration_hrs){
       struct stat st;
       memset(&st, 0, sizeof(struct stat));
       stat(name, &st);
-      if(st.st_ino != 0){
-            printf("mb: \"%s\" already exists\n", name);
-            return 0;
-      }
+      if(st.st_ino != 0)return 0;
 
       /* if unspecified, sleep for 5 days */
       unsigned int duration_adj = (duration_hrs > 0) ? duration_hrs : 120;
