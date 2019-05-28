@@ -165,7 +165,15 @@ int main(int a, char** b){
             }
             /* if sock already exists, remove it */
             else if(!cmb)remove(ext);
+
+            /* if create_mb() returns anything but 2 or 0, something
+             * has gone wrong, either with socket creation, or spawning threads
+             * in either of these two cases, we'll need to exit
+             * and it won't be worthwhile to retry creation
+             */
+            else break;
       }
 
+      /* upon create_mb error 1 or -1 */
       return 1;
 }
