@@ -149,16 +149,33 @@ int main(int a, char** b){
       b[cre_arg]);
       /* create_mb returns 2 from client process */
       int cmb;
-      if((cmb = create_mb(ext, dur)) == 2){
-            if(create)return 0;
+/*
+ *      if((cmb = create_mb(ext, dur)) == 2){
+ *            if(create)return 0;
+ *
+ *            usleep(10000);
+ *            if(!client(ext))
+ *                  printf("could not start client on %s\n", ext);
+ *            else return 0;
+ *      }
+ *      else if(!cmb)remove(ext);
+ */
 
-            usleep(10000);
-            if(!client(ext))
-                  printf("could not start client on %s\n", ext);
-            else return 0;
+      /* we're going to be trying to create a board twice
+       * second time is in case an orphan socket exists
+       */
+      for(int i = 0; i < 2; ++i){
+            if((cmb = create_mb(ext, dur)) == 2){
+                  if(create)return 0;
+
+                  usleep(10000);
+                  if(!client(ext))
+                        printf("could not start client on %s\n", ext);
+                  else return 0;
+            }
+            /* if sock already exists, remove it */
+            else if(!cmb)remove(ext);
       }
-      /* if sock already exists, remove it */
-      else if(!cmb)remove(ext);
 
       return 1;
 }
