@@ -159,7 +159,7 @@ _Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock, st
       log_f("pass_rname_up_req called");
       struct notif_arg arg;
       /*
-       * *socks should be first nonzero sock that isn't requester 
+       * *socks should point to first non -1 sock that isn't requester 
        * socks are added sequentially
        */
       _Bool success = 0;
@@ -173,6 +173,8 @@ _Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock, st
             }
       }
       if(!success)return 0;
+
+      /* resizing rupc if necessary */
       if(rupc->n == rupc->cap){
             rupc->cap *= 2;
             struct sock_pair* tmp_sp = malloc(sizeof(struct sock_pair)*rupc->cap);
