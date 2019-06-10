@@ -316,6 +316,9 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
                   send_mem_inf(peers, n_peers);
                   /*pthread_mutex_unlock(&peer_mut);*/
                   break;
+            case MSG_DUR_REQ:
+                  request_alert_dur();
+                  break;
 
             default: return 0;
       }
@@ -478,6 +481,10 @@ int create_mb(char* name, int duration_hrs){
       pthread_create(&add_host_pth_pth, NULL, &add_host_pth, &sock);
       pthread_detach(add_host_pth_pth);
 
+      /* SIGUSR1 is used to interrupt calls to sleep
+       * to update duration_adj 
+       */
+      signal(SIGUSR1, spin);
       #ifndef ASH_DEBUG
       /* if we're in debug mode, ctrl-c should kill host */
       signal(SIGINT, spin);
