@@ -125,7 +125,7 @@ _Bool send_mem_inf(int* peers, int n_peers){
  * but duration_adj will be updated
  */
 _Bool request_alert_dur(){
-      return 0;
+      return !kill(getpid(), SIGUSR1);
 }
 
 /* DURATION IS SENT IN REF_NO */
