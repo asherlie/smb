@@ -11,7 +11,15 @@
 #define MSG_N_MEM_REQ     4
 #define MSG_N_MEM_INF     5
 
+/* removal of board */
 #define MSG_REMOVE_BOARD  6
+
+/* alert for duration */
+#define MSG_DUR_ALERT     7
+/* alert used for debugging */
+#ifdef ASH_DEBUG
+#define MSG_DEBUG_ALERT   8
+#endif
 
 #define ANSI_RED   "\x1B[31m"
 #define ANSI_NON   "\x1b[0m"
@@ -19,7 +27,7 @@
 #define ANSI_BLU   "\x1b[34m"
 #define ANSI_MGNTA "\x1b[35m"
 
-#define SMB_VER    "1.2.0"
+#define SMB_VER    "1.2.1"
 
 struct mb_msg{
       /* mb_inf[

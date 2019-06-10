@@ -119,6 +119,29 @@ _Bool send_mem_inf(int* peers, int n_peers){
       return notify(&arg);
 }
 
+/* to get the updated duration, we'll need to
+ * send an interrupt signal to this process
+ * this will be caught by the while loop in create_mb()
+ * but duration_adj will be updated
+ */
+_Bool request_alert_dur(){
+      return 0;
+}
+
+/* DURATION IS SENT IN REF_NO */
+_Bool alert_duration(int* peers, int n_peers, int updated_dur){
+      struct notif_arg arg;
+      arg.socks = peers;
+      arg.n_peers = n_peers;
+      arg.msg_buf = 0;
+      memset(arg.msg, 0, 201);
+      arg.msg_type = MSG_DUR_ALERT;
+      arg.sender = -1;
+
+      arg.ref_no = updated_dur;
+      return notify(&arg);
+}
+
 _Bool spread_msg(int* peers, int n_peers, int ref_no, char* msg, uid_t sender_uid){
       struct notif_arg arg;
       arg.socks = peers;
@@ -144,8 +167,7 @@ _Bool spread_notif(int notif_type, int* peers, int n_peers,
       log_f("spread_notif called");
       struct notif_arg arg;
       arg.socks = peers;
-      arg.n_peers = n_peers;
-      arg.ref_no = ref_no;
+      arg.n_peers = n_peers; arg.ref_no = ref_no;
       arg.msg_buf = label;
       arg.msg_type = notif_type;
       arg.sender = sender_uid;
@@ -465,7 +487,8 @@ int create_mb(char* name, int duration_hrs){
       duration_adj *= 3600;
       
       /* sleep() returns remaining sleep time if interrupted */
-      while((duration_adj = sleep(duration_adj)));
+      while((duration_adj = sleep(duration_adj)))
+            alert_duration(peers, n_peers, duration_adj);
 
       remove(name);
 
