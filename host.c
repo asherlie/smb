@@ -194,16 +194,17 @@ _Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock, st
       arg.ref_no = ref_no;
       arg.msg_buf = 0;
       arg.msg_type = MSG_RNAME_UP_REQ;
-      /* unused for now - setting for consistency */
-      arg.sender = get_peer_cred(sender_sock);
+
+      /* sender is unused for MSG_RNAME_UP_REQ */
+      arg.sender = -1;
+
       memset(arg.msg, 0, 201);
-      /* only 50 chars are used */
 
       return notify(&arg);
 }
 
 /* need to find a way to know who requested update */
-_Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, struct rname_up_cont* rupc){
+_Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, uid_t creator, struct rname_up_cont* rupc){
       struct notif_arg arg;
       _Bool found = 0;
       int i;
@@ -222,7 +223,7 @@ _Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, struct rname_u
       arg.ref_no = ref_no;
       arg.msg_buf = label;
       arg.msg_type = MSG_RNAME_UP_INF;
-      arg.sender = get_peer_cred(sender_sock);
+      arg.sender = creator;
       memset(arg.msg, 0, 201);
       strncpy(arg.msg, label, 50);
 
@@ -254,7 +255,7 @@ void host_cleanup(){
 
 /* TODO: add petition functionality!! */
 /* pea should be compatible with no alterations */
-_Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
+_Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t creator){
       uid_t sender = get_peer_cred(sender_sock);
       switch(mb_type){
             case MSG_CREATE_THREAD:
@@ -279,14 +280,10 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock){
             case MSG_RNAME_UP_REQ:
                   pass_rname_up_req(peers, n_peers, ref_no, sender_sock, &ruc);
                   break;
-            /* TODO: original creator should be passed along -
-             * as of now, it appears to the receiver that the
-             * passer is the creator of the room
-             */
-            /* pass along room name to she who requested it */
+            /* pass along room name and creator to she who requested it */
             case MSG_RNAME_UP_INF:
                   /* sender sock is sender in this case */
-                  pass_rname_up_inf(ref_no, sender_sock, str_arg, &ruc);
+                  pass_rname_up_inf(ref_no, sender_sock, str_arg, creator, &ruc);
                   break;
             case MSG_N_MEM_REQ:
                   /*
@@ -341,7 +338,7 @@ void* read_cl_pth(void* peer_sock_v){
             log_f_int(mb_inf[2]);
             log_f("read str_buf: ");
             log_f(str_buf);
-            mb_handler(mb_inf[0], mb_inf[1], str_buf, *peer_sock);
+            mb_handler(mb_inf[0], mb_inf[1], str_buf, *peer_sock, mb_inf[2]);
       }
       /* setting peers[x] to 0 to avoid resizing/rearranging indices
        * of this array, since add_host uses offsets into peers as param

@@ -341,7 +341,7 @@ void* read_notif_pth(void* rnp_arg_v){
                          * TODO: look into removing this check
                          */
                         if(!room_lookup(*rnp_arg->rml, NULL, ref_no) &&
-                          (cur_r = add_room_rml(rnp_arg->rml, ref_no, buf, -1, NULL)))
+                          (cur_r = add_room_rml(rnp_arg->rml, ref_no, buf, uid, NULL)))
                               printf("%s%s%s: %s[*ROOM_CREATE* %s]%s\r\n",
                               ANSI_GRE, get_uname(cur_r->creator, rnp_arg->uname_table),
                               ANSI_NON, ANSI_RED, buf, ANSI_NON);
