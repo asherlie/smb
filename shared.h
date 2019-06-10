@@ -19,15 +19,18 @@
 #define ANSI_BLU   "\x1b[34m"
 #define ANSI_MGNTA "\x1b[35m"
 
-#define SMB_VER    "1.1.16"
+#define SMB_VER    "1.1.17"
 
 struct mb_msg{
-      int mb_inf[2];
+      /* mb_inf[
+       *        0: msg type
+       *        1: optional room ref no
+       *        2: optional room creator uid
+       *         ]
+       */
+      /* as of now, mb_inf[2] is used only for sharing creator of a room */
+      int mb_inf[3];
       char str_arg[201];
-
-      /* unames are <= 32 chars */
-      /* as of now, this is only used for sharing the creator of a room */
-      char uname_arg[33];
 };
 
 int listen_sock();

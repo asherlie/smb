@@ -92,6 +92,7 @@ _Bool notify(struct notif_arg* arg){
                   arg->retval = arg->socks[i] = -1;
                   continue;
             }
+            /* sending msg */
             log_f("msg");
             if(send(arg->socks[i], arg->msg, 200, 0) <= 0){
                   arg->retval = arg->socks[i] = -1;
@@ -321,7 +322,7 @@ void init_host(){
 
 void* read_cl_pth(void* peer_sock_v){
       int* peer_sock = ((int*)peer_sock_v);
-      int mb_inf[2] = {-1, -1}; char str_buf[201];
+      int mb_inf[3] = {-1, -1, -1}; char str_buf[201];
 
       while(*peer_sock >= 0){
             memset(str_buf, 0, 201);
@@ -331,12 +332,13 @@ void* read_cl_pth(void* peer_sock_v){
              * it's ok not to for now because we're checking
              * the return value of all read() calls
              */
-            if(read(*peer_sock, mb_inf, sizeof(int)*2) <= 0)break;
+            if(read(*peer_sock, mb_inf, sizeof(int)*3) <= 0)break;
             if(read(*peer_sock, str_buf, 200) <= 0)break;
 
             log_f("read mb_inf: ");
             log_f_int(mb_inf[0]);
             log_f_int(mb_inf[1]);
+            log_f_int(mb_inf[2]);
             log_f("read str_buf: ");
             log_f(str_buf);
             mb_handler(mb_inf[0], mb_inf[1], str_buf, *peer_sock);

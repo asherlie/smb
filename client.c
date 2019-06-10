@@ -203,9 +203,10 @@ struct room_lst* add_room_rml(struct rm_hash_lst* rml, int ref_no, char* name, u
 int send_mb_r(struct mb_msg mb_a, int sock){
       int ret = 1;
       #ifdef ASH_DEBUG
-      printf("sending: %i %i %s\n", mb_a.mb_inf[0], mb_a.mb_inf[1], mb_a.str_arg);
+      printf("sending: %i %i %i %s\n", mb_a.mb_inf[0], mb_a.mb_inf[1], mb_a.mb_inf[2], mb_a.str_arg);
       #endif
-      ret &= send(sock, mb_a.mb_inf, sizeof(int)*2, 0) != -1;
+      /* TODO: send creator as a separate uid_t */
+      ret &= send(sock, mb_a.mb_inf, sizeof(int)*3, 0) != -1;
       ret &= send(sock, mb_a.str_arg, 200, 0) != -1;
       return ret;
 }
@@ -215,6 +216,7 @@ int create_room(char* rm_name, int sock){
       struct mb_msg mb_a;
       mb_a.mb_inf[0] = MSG_CREATE_THREAD;
       mb_a.mb_inf[1] = -1;
+      mb_a.mb_inf[2] = -1;
       memset(mb_a.str_arg, 0, 201);
       strncpy(mb_a.str_arg, rm_name, 200);
       return send_mb_r(mb_a, sock);
@@ -224,17 +226,24 @@ int reply_room(int rm_ref_no, char* msg, int sock){
       struct mb_msg mb_a;
       mb_a.mb_inf[0] = MSG_REPLY_THREAD;
       mb_a.mb_inf[1] = rm_ref_no;
+      mb_a.mb_inf[2] = -1;
       memset(mb_a.str_arg, 0, 201);
       strncpy(mb_a.str_arg, msg, 200);
       return send_mb_r(mb_a, sock);
 }
 
-int snd_rname_update(int rm_ref_no, char* rm_name, int sock){
+int snd_rname_update(int rm_ref_no, char* rm_name, uid_t rm_creator, int sock){
       struct mb_msg mb_a;
       mb_a.mb_inf[0] = MSG_RNAME_UP_INF;
       mb_a.mb_inf[1] = rm_ref_no;
+      /* TODO: there should be a separate uid_t entry in mb_msg
+       * for creator - this shouldn't be stored in an int
+       */
+      mb_a.mb_inf[2] = rm_creator;
+
       memset(mb_a.str_arg, 0, 201);
       strncpy(mb_a.str_arg, rm_name, 200);
+
       return send_mb_r(mb_a, sock);
 }
 
@@ -242,6 +251,7 @@ int req_n_mem(int sock){
       struct mb_msg mb_a;
       mb_a.mb_inf[0] = MSG_N_MEM_REQ;
       mb_a.mb_inf[1] = -1;
+      mb_a.mb_inf[2] = -1;
       memset(mb_a.str_arg, 0, 201);
       return send_mb_r(mb_a, sock);
 }
@@ -250,6 +260,7 @@ int rm_board(int sock){
       struct mb_msg mb_a;
       mb_a.mb_inf[0] = MSG_REMOVE_BOARD;
       mb_a.mb_inf[1] = -1;
+      mb_a.mb_inf[2] = -1;
       memset(mb_a.str_arg, 0, 201);
       return send_mb_r(mb_a, sock);
 }
@@ -317,12 +328,12 @@ void* read_notif_pth(void* rnp_arg_v){
                         insert_msg_msg_queue(cur_r, buf, uid);
                         break;
 
-                  /* send out room name if it's requested */
+                  /* send out room name and creator if requested */
 
                   case MSG_RNAME_UP_REQ:
                         cur_r = room_lookup(*rnp_arg->rml, NULL, ref_no);
                         if(!cur_r)break;
-                        snd_rname_update(ref_no, cur_r->label, rnp_arg->sock);
+                        snd_rname_update(ref_no, cur_r->label, cur_r->creator, rnp_arg->sock);
                         break;
                   case MSG_RNAME_UP_INF:
                         /* if room is found, we don't know what to do 
