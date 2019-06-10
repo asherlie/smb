@@ -256,6 +256,15 @@ int req_n_mem(int sock){
       return send_mb_r(mb_a, sock);
 }
 
+int req_board_duration(int sock){
+      struct mb_msg mb_a;
+      mb_a.mb_inf[0] = MSG_DUR_REQ;
+      mb_a.mb_inf[1] = -1;
+      mb_a.mb_inf[2] = -1;
+      memset(mb_a.str_arg, 0, 201);
+      return send_mb_r(mb_a, sock);
+}
+
 int rm_board(int sock){
       struct mb_msg mb_a;
       mb_a.mb_inf[0] = MSG_REMOVE_BOARD;
@@ -355,6 +364,13 @@ void* read_notif_pth(void* rnp_arg_v){
                         /* n_members are sent in the ref_no buf */
                         ANSI_RED, ref_no, ANSI_MGNTA, (ref_no > 1) ? "s are" : " is",
                         ANSI_RED, ANSI_MGNTA, rnp_arg->rml->board_path, ANSI_RED, ANSI_NON);
+                        break;
+                  case MSG_DUR_ALERT:
+                        if(!rnp_arg->dur_req)break;
+                        rnp_arg->dur_req = 0;
+                        printf("%s%i%s minutes until %s**%s%s%s** is removed%s\r\n", ANSI_RED,
+                        ref_no/60, ANSI_MGNTA, ANSI_RED, ANSI_MGNTA, rnp_arg->rml->board_path,
+                        ANSI_RED, ANSI_NON);
                         break;
             }
       }
@@ -496,6 +512,15 @@ void* repl_pth(void* rnp_arg_v){
                               if(!cur_room)break;
                               printf("%syou have left \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
                               cur_room = NULL;
+                              break;
+                        /* time remaining */
+                        /* TODO: document this */
+                        /* TODO: remaining time should be printed in h:m format */
+                        case 't':
+                              /* TODO: store duration information from previous alerts */
+                              /* TODO: do not make unnecessary calls to req_board_duration() */
+                              rnp_arg->dur_req = 1;
+                              req_board_duration(rnp_arg->sock);
                               break;
                         /* sends a deletion request for current board */
                         case 'd':

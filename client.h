@@ -47,7 +47,11 @@ struct rm_hash_lst{
 };
 
 struct read_notif_pth_arg{
-      _Bool n_mem_req;
+      /* n_mem_req and dur_req are used to keep track of whether or not to print
+       * alerts when they are received
+       */
+      _Bool n_mem_req, dur_req;
+
       int sock;
       struct rm_hash_lst* rml;
       struct ash_table* uname_table;
