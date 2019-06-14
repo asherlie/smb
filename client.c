@@ -302,7 +302,7 @@ void* read_notif_pth(void* rnp_arg_v){
       int ref_no, msg_type; uid_t uid;
       char buf[201];
       struct room_lst* cur_r = NULL;
-      rnp_arg->n_mem_req = 0;
+
       while(1){
             memset(buf, 0, 201);
             /* reading uid_t of sender */
@@ -366,7 +366,15 @@ void* read_notif_pth(void* rnp_arg_v){
                         ANSI_RED, ANSI_MGNTA, rnp_arg->rml->board_path, ANSI_RED, ANSI_NON);
                         break;
                   case MSG_DUR_ALERT:
+                        /* even if we're not waiting for an alert, we can store the dur */
+                        rnp_arg->dur = ref_no;
+                        rnp_arg->dur_recvd = clock();
                         if(!rnp_arg->dur_req)break;
+                        /* TODO: use stored dur_recvd info to print duration
+                         * print_dur will take in an rnpa and use rnpa->dur and dur_recvd
+                         * it will also be called from case 't' if both are != -1
+                         * print_dur(rnp_arg);
+                         */
                         rnp_arg->dur_req = 0;
                         printf("%s%i%s minutes until %s**%s%s%s** is removed%s\r\n", ANSI_RED,
                         ref_no/60, ANSI_MGNTA, ANSI_RED, ANSI_MGNTA, rnp_arg->rml->board_path,
@@ -498,7 +506,8 @@ void* repl_pth(void* rnp_arg_v){
                               if(!cur_room)
                                     printf("%syou have not yet joined a room%s\n", ANSI_MGNTA, ANSI_NON);
                               else 
-                                    printf("%scurrent room is \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
+                                    printf("%scurrent room (%s%i%s) is \"%s%s%s\"%s\n", ANSI_MGNTA, ANSI_RED,
+                                    cur_room->ref_no, ANSI_MGNTA, ANSI_RED, cur_room->label, ANSI_MGNTA, ANSI_NON);
                               break;
                         /* number of users */
                         case 'u':
@@ -584,6 +593,9 @@ _Bool client(char* sock_path){
       rnpa.sock = sock;
       rnpa.rml = &rml;
       strncpy(rnpa.rml->board_path, sock_path, PATH_MAX);
+
+      rnpa.n_mem_req = rnpa.dur_req = 0;
+      rnpa.dur = rnpa.dur_recvd = -1;
 
       pthread_t read_notif_pth_pth, repl_pth_pth;
       /* TODO: fix possible synch issues from sharing rnpa.rml */
