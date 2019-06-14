@@ -52,6 +52,12 @@ struct read_notif_pth_arg{
        */
       _Bool n_mem_req, dur_req;
 
+      /* dur stores most recent duration alert, dur_recvd
+       * stores the time it was received
+       */
+      int dur;
+      time_t dur_recvd;
+
       int sock;
       struct rm_hash_lst* rml;
       struct ash_table* uname_table;
