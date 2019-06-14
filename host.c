@@ -122,8 +122,9 @@ _Bool send_mem_inf(int* peers, int n_peers){
 /* to get the updated duration, we'll need to
  * send an interrupt signal to this process
  * this will be caught by the while loop in create_mb()
- * but duration_adj will be updated
+ * and duration_adj will be updated
  */
+/* CLEVER */
 _Bool request_alert_dur(){
       return !kill(getpid(), SIGUSR1);
 }
@@ -494,6 +495,15 @@ int create_mb(char* name, int duration_hrs){
       duration_adj *= 3600;
       
       /* sleep() returns remaining sleep time if interrupted */
+      /*
+       * TODO: fix /t extra time issue
+       * POSSIBLE SOLUTION:
+       * nanosleep(1e9) should be used * number of secs
+       * write a function sleep_abs that has similar behavior
+       * to sleep()
+       * each time a call to sleep() is interrupted, we gain 
+       * ~ an extra minute
+       */
       while((duration_adj = sleep(duration_adj)))
             alert_duration(peers, n_peers, duration_adj);
 
