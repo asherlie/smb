@@ -300,6 +300,7 @@ void print_dur(struct read_notif_pth_arg* rnpa){
       get_dur_secs(rnpa)/60, ANSI_MGNTA, ANSI_RED, ANSI_MGNTA, rnpa->rml->board_path,
       ANSI_RED, ANSI_NON);
 }
+
 /* ~~~~~~~~~ duration end ~~~~~~~~~~~ */
 
 /* run is accessed both from read_notif_pth and client() */
@@ -386,11 +387,6 @@ void* read_notif_pth(void* rnp_arg_v){
                         rnp_arg->dur = ref_no;
                         rnp_arg->dur_recvd = clock();
                         if(!rnp_arg->dur_req)break;
-                        /* TODO: use stored dur_recvd info to print duration
-                         * print_dur will take in an rnpa and use rnpa->dur and dur_recvd
-                         * it will also be called from case 't' if both are != -1
-                         * print_dur(rnp_arg);
-                         */
                         print_dur(rnp_arg);
                         rnp_arg->dur_req = 0;
                         break;
@@ -540,8 +536,10 @@ void* repl_pth(void* rnp_arg_v){
                         /* TODO: document this */
                         /* TODO: remaining time should be printed in h:m format */
                         case 't':
-                              /* TODO: store duration information from previous alerts */
-                              /* TODO: do not make unnecessary calls to req_board_duration() */
+                              if(rnp_arg->dur != -1 && rnp_arg->dur_recvd != -1){
+                                    print_dur(rnp_arg);
+                                    break;
+                              }
                               rnp_arg->dur_req = 1;
                               req_board_duration(rnp_arg->sock);
                               break;
