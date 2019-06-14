@@ -286,6 +286,22 @@ char* get_uname(uid_t uid, struct ash_table* table){
       return ret;
 }
 
+/* ~~~~~~~~~ duration begin ~~~~~~~~~~~ */
+/* TODO: should this just return int and do some rounding? */
+float get_dur_secs(struct read_notif_pth_arg* rnpa){
+      long double elapsed = (long double)(clock()-rnpa->dur_recvd)/CLOCKS_PER_SEC;
+      return (float)rnpa->dur-elapsed;
+}
+
+/* TODO: should this just take in dur and dur_recvd? */
+/* TODO: do we need a mutex lock to ensure correct /t output? */
+void print_dur(struct read_notif_pth_arg* rnpa){
+      printf("%s%.2f%s minutes until %s**%s%s%s** is removed%s\r\n", ANSI_RED,
+      get_dur_secs(rnpa)/60, ANSI_MGNTA, ANSI_RED, ANSI_MGNTA, rnpa->rml->board_path,
+      ANSI_RED, ANSI_NON);
+}
+/* ~~~~~~~~~ duration end ~~~~~~~~~~~ */
+
 /* run is accessed both from read_notif_pth and client() */
 /* once run is set to 0, client will safely exit */
 /* run is volatile because its value can be changed by SIGINTs */
@@ -375,10 +391,8 @@ void* read_notif_pth(void* rnp_arg_v){
                          * it will also be called from case 't' if both are != -1
                          * print_dur(rnp_arg);
                          */
+                        print_dur(rnp_arg);
                         rnp_arg->dur_req = 0;
-                        printf("%s%i%s minutes until %s**%s%s%s** is removed%s\r\n", ANSI_RED,
-                        ref_no/60, ANSI_MGNTA, ANSI_RED, ANSI_MGNTA, rnp_arg->rml->board_path,
-                        ANSI_RED, ANSI_NON);
                         break;
             }
       }
