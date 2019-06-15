@@ -287,17 +287,13 @@ char* get_uname(uid_t uid, struct ash_table* table){
 }
 
 /* ~~~~~~~~~ duration begin ~~~~~~~~~~~ */
-/* TODO: should this just return int and do some rounding? */
-float get_dur_secs(struct read_notif_pth_arg* rnpa){
-      clock_t cur_t = clock();
-      double elapsed = ((double)cur_t-rnpa->dur_recvd)/1e4;
-      return (float)rnpa->dur-(float)elapsed;
+int get_dur_secs(struct read_notif_pth_arg* rnpa){
+      return rnpa->dur-(time(NULL)-rnpa->dur_recvd);
 }
 
-/* TODO: should this just take in dur and dur_recvd? */
 /* TODO: do we need a mutex lock to ensure correct /t output? */
 void print_dur(struct read_notif_pth_arg* rnpa){
-      printf("%s%.2f%s minutes until %s**%s%s%s** is removed%s\r\n", ANSI_RED,
+      printf("%s%i%s minutes until %s**%s%s%s** is removed%s\r\n", ANSI_RED,
       get_dur_secs(rnpa)/60, ANSI_MGNTA, ANSI_RED, ANSI_MGNTA, rnpa->rml->board_path,
       ANSI_RED, ANSI_NON);
 }
@@ -386,7 +382,7 @@ void* read_notif_pth(void* rnp_arg_v){
                   case MSG_DUR_ALERT:
                         /* even if we're not waiting for an alert, we can store the dur */
                         rnp_arg->dur = ref_no;
-                        rnp_arg->dur_recvd = clock();
+                        rnp_arg->dur_recvd = time(NULL);
                         if(!rnp_arg->dur_req)break;
                         print_dur(rnp_arg);
                         rnp_arg->dur_req = 0;
