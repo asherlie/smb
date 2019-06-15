@@ -289,8 +289,9 @@ char* get_uname(uid_t uid, struct ash_table* table){
 /* ~~~~~~~~~ duration begin ~~~~~~~~~~~ */
 /* TODO: should this just return int and do some rounding? */
 float get_dur_secs(struct read_notif_pth_arg* rnpa){
-      long double elapsed = (long double)(clock()-rnpa->dur_recvd)/CLOCKS_PER_SEC;
-      return (float)rnpa->dur-elapsed;
+      clock_t cur_t = clock();
+      double elapsed = ((double)cur_t-rnpa->dur_recvd)/1e4;
+      return (float)rnpa->dur-(float)elapsed;
 }
 
 /* TODO: should this just take in dur and dur_recvd? */
@@ -407,6 +408,8 @@ void p_help(){
             "  sends message to current room\n"
             "/[h]elp:\n"
             "  prints this information\n"
+            "/[t]ime:\n"
+            "  prints the number of minutes until deletion of board\n"
             "/[j]oin [room_name]:\n"
             "/[r]oom [room_name]:\n" 
             "  join room with room_name\n"
@@ -533,7 +536,6 @@ void* repl_pth(void* rnp_arg_v){
                               cur_room = NULL;
                               break;
                         /* time remaining */
-                        /* TODO: document this */
                         /* TODO: remaining time should be printed in h:m format */
                         case 't':
                               if(rnp_arg->dur != -1 && rnp_arg->dur_recvd != -1){
