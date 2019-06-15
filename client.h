@@ -46,6 +46,10 @@ struct rm_hash_lst{
       struct ash_table* ref_no_lookup;
 };
 
+/* passed as parameter to read_notif_pth() as well as repl_pth(), used to
+ * share information between the two
+ */
+/* TODO: rename this struct - it is not just used for read_notif_pth() */
 struct read_notif_pth_arg{
       /* n_mem_req and dur_req are used to keep track of whether or not to print
        * alerts when they are received

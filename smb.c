@@ -104,6 +104,7 @@ int main(int a, char** b){
                         case 'a':
                               any = 1;
                               break;
+                        /* TODO: allow setting duration with h:m for finer control */
                         case 'd':
                               /* if this is the last arg */
                               if(i == a-1)break;
