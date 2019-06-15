@@ -34,6 +34,9 @@ client commands:
       /[h]elp:
             prints this information
 
+      /[t]ime
+            prints the number of minutes until deletion of board
+
       /[j]oin  [room_name]:
       /[r]room [room_name]:
             join room with room_name
