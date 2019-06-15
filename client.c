@@ -293,8 +293,9 @@ int get_dur_secs(struct read_notif_pth_arg* rnpa){
 
 /* TODO: do we need a mutex lock to ensure correct /t output? */
 void print_dur(struct read_notif_pth_arg* rnpa){
-      printf("%s%i%s minutes until %s**%s%s%s** is removed%s\r\n", ANSI_RED,
-      get_dur_secs(rnpa)/60, ANSI_MGNTA, ANSI_RED, ANSI_MGNTA, rnpa->rml->board_path,
+      int dur = get_dur_secs(rnpa);
+      printf("%s%i:%.2i%s (m:s) until %s**%s%s%s** is removed%s\r\n", ANSI_RED,
+      dur/60, dur%60, ANSI_MGNTA, ANSI_RED, ANSI_MGNTA, rnpa->rml->board_path,
       ANSI_RED, ANSI_NON);
 }
 
@@ -532,7 +533,6 @@ void* repl_pth(void* rnp_arg_v){
                               cur_room = NULL;
                               break;
                         /* time remaining */
-                        /* TODO: remaining time should be printed in h:m format */
                         case 't':
                               if(rnp_arg->dur != -1 && rnp_arg->dur_recvd != -1){
                                     print_dur(rnp_arg);
