@@ -495,14 +495,14 @@ void* repl_pth(void* rnp_arg_v){
                               tmp_rm = room_lookup(*rnp_arg->rml, NULL, tmp_ret);
                               if(!tmp_rm)break;
                               cur_room = tmp_rm;
-                              printf("%scurrent room has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
+                              p_rm_switch(cur_room);
                               break;
                         /* go to next room with same first character in label */
                         case 'n':
                               if(!cur_room)break;
                               /* to allow for circular cycling */
                               cur_room = (cur_room->next) ? cur_room->next : cur_room->bookend_rm;
-                              printf("%scurrent room has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
+                              p_rm_switch(cur_room);
                               break;
                         case 'c':
                               if(!(tmp_p = strchr(inp, ' ')))break;
