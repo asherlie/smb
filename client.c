@@ -435,6 +435,15 @@ void p_help(){
       , ANSI_BLU, ANSI_NON);
 }
 
+void p_rm_switch(struct room_lst* rm){
+      printf("%scurrent room has been switched to \"%s%s%s\" (%s%i%s)%s\n", 
+      ANSI_MGNTA, ANSI_RED, rm->label, ANSI_MGNTA, ANSI_RED, rm->ref_no, ANSI_MGNTA, ANSI_NON);
+}
+
+/*
+ * TODO: go through each usage of rnp_arg in here and in read_notif_pth(), checking for concurrency issues
+ * if any exist, add a lock to the struct
+ */
 void* repl_pth(void* rnp_arg_v){
       struct read_notif_pth_arg* rnp_arg = (struct read_notif_pth_arg*)rnp_arg_v;
       struct room_lst* tmp_rm;
@@ -450,6 +459,7 @@ void* repl_pth(void* rnp_arg_v){
                    (cur_room) ? (char*)cur_room->msg_queue->msg - (char*)cur_room->msg_queue : 0,
                    /* number of cached messages */
                    (cur_room) ? (cur_room->msg_queue-cur_room->msg_queue_base)+1 : 0,
+                   /* char to iterate options */
                    14,
                    &b_read,
                    &free_s
@@ -477,7 +487,7 @@ void* repl_pth(void* rnp_arg_v){
                                     break;
                               }
                               cur_room = tmp_rm;
-                              printf("%scurrent room has been switched to \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
+                              p_rm_switch(cur_room);
                               break;
                         /* go to room with ref_no */
                         case 'g':
