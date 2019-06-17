@@ -99,7 +99,9 @@ _Bool notify(struct notif_arg* arg){
                   continue;
             }
       }
+
       pthread_mutex_unlock(&peer_mut); 
+
       return arg->retval != -1;
 }
 
@@ -264,10 +266,14 @@ int assign_ref_no(){
        * this mutex is being used to avoid creating an additional
        * one
        */
+
       pthread_mutex_lock(&peer_mut);
+
       int ret = u_ref_no;
       ++u_ref_no;
+
       pthread_mutex_unlock(&peer_mut);
+
       return ret;
 }
 
@@ -380,7 +386,9 @@ void* read_cl_pth(void* peer_sock_v){
       /* if all peers have disconnected, u_ref_no and peers are reset */
       /* i'm hesitant to access peers from here but... */
       _Bool reinit = 1;
+
       pthread_mutex_lock(&peer_mut);
+
       for(int i = 0; i < n_peers; ++i)
             if(peers[i] >= 0){
                   reinit = 0;
@@ -393,11 +401,14 @@ void* read_cl_pth(void* peer_sock_v){
       }
 
       pthread_mutex_unlock(&peer_mut);
+
       return NULL;
 }
 
 void add_host(int sock){
+
       pthread_mutex_lock(&peer_mut);
+
       if(n_peers == peer_cap){
             peer_cap *= 2;
             int* tmp_peers = malloc(sizeof(int)*peer_cap);
