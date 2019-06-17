@@ -48,6 +48,18 @@ struct rm_hash_lst{
 
 /* passed as parameter to read_notif_pth() as well as repl_pth(), used to
  * share information between the two
+ *
+ * read_notif_pth() performs the following:
+ *    adding rooms
+ *    room lookups
+ *    uname lookups
+ *    setting duration info
+ *
+ * repl_pth() performs the following:
+ *    room lookups
+ *    uname lookups
+ *    info about pending requests
+ *    accessing duration info
  */
 /* TODO: rename this struct - it is not just used for read_notif_pth() */
 struct read_notif_pth_arg{
