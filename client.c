@@ -539,7 +539,9 @@ void* repl_pth(void* rnp_arg_v){
                         case 'e':
                         case 'x':
                               if(!cur_room)break;
-                              printf("%syou have left \"%s\"%s\n", ANSI_MGNTA, cur_room->label, ANSI_NON);
+                              printf("%syou have left \"%s%s%s\" (%s%i%s)%s\n",
+                              ANSI_MGNTA, ANSI_RED, cur_room->label, ANSI_MGNTA,
+                              ANSI_RED, cur_room->ref_no, ANSI_MGNTA, ANSI_NON);
                               cur_room = NULL;
                               break;
                         /* time remaining */
