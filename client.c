@@ -213,7 +213,7 @@ int send_mb_r(struct mb_msg mb_a, int sock){
       #ifdef ASH_DEBUG
       printf("sending: %i %i %i %s\n", mb_a.mb_inf[0], mb_a.mb_inf[1], mb_a.mb_inf[2], mb_a.str_arg);
       #endif
-      /* TODO: send creator as a separate uid_t */
+      /* TODO: send creator as a separate uid_t rather than using an int */
       ret &= send(sock, mb_a.mb_inf, sizeof(int)*3, 0) != -1;
       ret &= send(sock, mb_a.str_arg, 200, 0) != -1;
       return ret;
@@ -299,7 +299,7 @@ int get_dur_secs(struct read_notif_pth_arg* rnpa){
       return rnpa->dur-(time(NULL)-rnpa->dur_recvd);
 }
 
-/* TODO: do we need a mutex lock to ensure correct /t output? */
+/* THIS SHOULD ONLY BE CALLED WITHIN A pthread_mutex_lock ON rnpa->rnpa_lock */
 void print_dur(struct read_notif_pth_arg* rnpa){
       int dur = get_dur_secs(rnpa);
       printf("%s%i:%.2i%s (m:s) until %s**%s%s%s** is removed%s\r\n", ANSI_RED,

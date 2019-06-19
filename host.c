@@ -37,9 +37,9 @@ void log_f_int(int i){
 }
 
 /* TODO: take these out of global space */
-
 /* TODO: throw this in a struct */
 int* peers, n_peers, peer_cap;
+/* TODO: rename peer_mut - it's used for u_ref_no and rupc as well */
 pthread_mutex_t peer_mut;
 
 /* used to keep track of name update requests */
@@ -65,8 +65,6 @@ uid_t get_peer_cred(int p_sock){
 /* returns whether a member has disconnected */
 _Bool notify(struct notif_arg* arg){
       arg->retval = 0;
-
-      pthread_mutex_lock(&peer_mut); 
 
       for(int i = 0; i < arg->n_peers; ++i){
             if(arg->socks[i] == -1)continue;
@@ -100,25 +98,27 @@ _Bool notify(struct notif_arg* arg){
             }
       }
 
-      pthread_mutex_unlock(&peer_mut); 
-
       return arg->retval != -1;
 }
 
 /* NUMBER OF MEMBERS IS SENT IN REF_NO */
 _Bool send_mem_inf(int* peers, int n_peers){
       struct notif_arg arg;
-      arg.socks = peers;
-      arg.n_peers = n_peers;
+
       arg.msg_buf = 0;
       arg.msg_type = MSG_N_MEM_INF;
       arg.sender = -1;
       memset(arg.msg, 0, 201);
       arg.ref_no = 0;
+
+      pthread_mutex_lock(&peer_mut);
+
+      arg.socks = peers;
+      arg.n_peers = n_peers;
       for(int i = 0; i < n_peers; ++i)
             arg.ref_no += peers[i] != -1;
 
-      return notify(&arg);
+      return notify(&arg) & !pthread_mutex_unlock(&peer_mut);
 }
 
 /* to get the updated duration, we'll need to
@@ -134,21 +134,24 @@ _Bool request_alert_dur(){
 /* DURATION IS SENT IN REF_NO */
 _Bool alert_duration(int* peers, int n_peers, int updated_dur){
       struct notif_arg arg;
-      arg.socks = peers;
-      arg.n_peers = n_peers;
+
       arg.msg_buf = 0;
       memset(arg.msg, 0, 201);
       arg.msg_type = MSG_DUR_ALERT;
       arg.sender = -1;
 
       arg.ref_no = updated_dur;
-      return notify(&arg);
+
+      pthread_mutex_lock(&peer_mut);
+
+      arg.socks = peers;
+      arg.n_peers = n_peers;
+      return notify(&arg) & !pthread_mutex_unlock(&peer_mut);
 }
 
 _Bool spread_msg(int* peers, int n_peers, int ref_no, char* msg, uid_t sender_uid){
       struct notif_arg arg;
-      arg.socks = peers;
-      arg.n_peers = n_peers;
+
       arg.ref_no = ref_no;
       arg.msg_buf = msg;
       arg.msg_type = MSG_REPLY_THREAD;
@@ -162,15 +165,20 @@ _Bool spread_msg(int* peers, int n_peers, int ref_no, char* msg, uid_t sender_ui
       log_f("spread_msg is about to send: ");
       log_f(msg);
 
-      return notify(&arg);
+      pthread_mutex_lock(&peer_mut);
+
+      arg.socks = peers;
+      arg.n_peers = n_peers;
+
+      return notify(&arg) & !pthread_mutex_unlock(&peer_mut);
 }
 
 _Bool spread_notif(int notif_type, int* peers, int n_peers,
                    int ref_no, char* label, uid_t sender_uid){
       log_f("spread_notif called");
       struct notif_arg arg;
-      arg.socks = peers;
-      arg.n_peers = n_peers; arg.ref_no = ref_no;
+
+      arg.ref_no = ref_no;
       arg.msg_buf = label;
       arg.msg_type = notif_type;
       arg.sender = sender_uid;
@@ -178,12 +186,27 @@ _Bool spread_notif(int notif_type, int* peers, int n_peers,
       /* only 50 chars are used */
       if(arg.msg_buf)strncpy(arg.msg, label, 50);
 
-      return notify(&arg);
+      pthread_mutex_lock(&peer_mut);
+
+      arg.socks = peers;
+      arg.n_peers = n_peers;
+
+      return notify(&arg) & !pthread_mutex_unlock(&peer_mut);
 }
 
-_Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock, struct rname_up_cont* rupc){
+/* _Bool lock should be set to 1 unless the caller of
+ * pass_rname_up_req() needs to lock on peer_mut before
+ * it calls pass_rname_up_req() and cannot release it
+ * until after
+ */
+_Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock, struct rname_up_cont* rupc, _Bool lock){
       log_f("pass_rname_up_req called");
       struct notif_arg arg;
+
+      /* TODO: remove non critical sections of this function above this lock */
+      /* it is critical that peers remain unchanged for this entire function */
+      if(lock)pthread_mutex_lock(&peer_mut);
+
       /*
        * *socks should point to first non -1 sock that isn't requester 
        * socks are added sequentially
@@ -191,14 +214,22 @@ _Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock, st
       _Bool success = 0;
       for(int i = 0; i < n_peers; ++i){
             if(peers[i] != -1){
-                  /* no sock added after sender_sock will be helpful */
-                  if(peers[i] == sender_sock)return 0;
+                  /* since socks are added to peers sequentially,
+                   * no sock added after sender_sock will be helpful 
+                   */
+                  if(peers[i] == sender_sock){
+                        if(lock)pthread_mutex_unlock(&peer_mut);
+                        return 0;
+                  }
                   arg.socks = &peers[i];
                   success = 1;
                   break;
             }
       }
-      if(!success)return 0;
+      if(!success){
+            if(lock)pthread_mutex_unlock(&peer_mut);
+            return 0;
+      }
 
       /* resizing rupc if necessary */
       if(rupc->n == rupc->cap){
@@ -225,6 +256,7 @@ _Bool pass_rname_up_req(int* peers, int n_peers, int ref_no, int sender_sock, st
 
       memset(arg.msg, 0, 201);
 
+      if(lock)pthread_mutex_unlock(&peer_mut);
       return notify(&arg);
 }
 
@@ -233,6 +265,10 @@ _Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, uid_t creator,
       struct notif_arg arg;
       _Bool found = 0;
       int i;
+
+      /* this is locked when a new peer connects */
+      pthread_mutex_lock(&peer_mut);
+
       /* this loop is finding out who we need to send info to */
       for(i = rupc->n-1; i >= 0; --i){
             /* TODO: handle case where multiple requesters requested from sender */
@@ -243,7 +279,10 @@ _Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, uid_t creator,
                   break;
             }
       }
-      if(!found)return 0;
+      if(!found){
+            pthread_mutex_unlock(&peer_mut);
+            return 0;
+      }
       arg.n_peers = 1;
       arg.ref_no = ref_no;
       arg.msg_buf = label;
@@ -255,6 +294,8 @@ _Bool pass_rname_up_inf(int ref_no, int sender_sock, char* label, uid_t creator,
       _Bool ret = notify(&arg);
 
       memmove(rupc->sp+i, rupc->sp+i+1, sizeof(struct sock_pair)*(--rupc->n)-i);
+
+      pthread_mutex_unlock(&peer_mut);
 
       return ret;
 }
@@ -307,7 +348,7 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
                   spread_msg(peers, n_peers, ref_no, str_arg, sender);
                   break;
             case MSG_RNAME_UP_REQ:
-                  pass_rname_up_req(peers, n_peers, ref_no, sender_sock, &ruc);
+                  pass_rname_up_req(peers, n_peers, ref_no, sender_sock, &ruc, 1);
                   break;
             /* pass along room name and creator to she who requested it */
             case MSG_RNAME_UP_INF:
@@ -421,21 +462,21 @@ void add_host(int sock){
       pthread_mutex_unlock(&peer_mut);
 
       pthread_t read_cl_pth_pth;
-      /* is this too hacky? should i just malloc some mem? */
-      /* this means that i need to guarantee peers doesn't have entries removed/rearranged */
+      /* is this too hacky? should i just malloc some mem?
+       * this means that i need to guarantee peers doesn't have entries removed/rearranged
+       */
       pthread_create(&read_cl_pth_pth, NULL, &read_cl_pth, (peers+n_peers)-1);
       pthread_detach(read_cl_pth_pth);
 
-      /*
-       *can't lock here - notify(), which is called by pass_rname_up_req(), locks on peer_mut
-       *how can i ensure that `peers` isn't changed in this loop
-       */
-      /* TODO: make sure it's safe to access peers from here */
-      for(int i = 0; i < /* TODO: safely! */u_ref_no; ++i)
+      pthread_mutex_lock(&peer_mut);
+
+      for(int i = 0; i < u_ref_no; ++i)
             /* even if ref_no i doesn't exist, this request can
              * be made safely, it just won't be fulfilled
              */
-            pass_rname_up_req(peers, n_peers, i, sock, &ruc);
+            pass_rname_up_req(peers, n_peers, i, sock, &ruc, 0);
+
+      pthread_mutex_unlock(&peer_mut);
 }
 
 void* add_host_pth(void* local_sock_v){

@@ -29,7 +29,7 @@
 #define ANSI_BLU   "\x1b[34m"
 #define ANSI_MGNTA "\x1b[35m"
 
-#define SMB_VER    "1.3.17"
+#define SMB_VER    "1.4.0"
 
 struct mb_msg{
       /* mb_inf[
