@@ -295,15 +295,15 @@ char* get_uname(uid_t uid, struct ash_table* table){
 }
 
 /* ~~~~~~~~~ duration begin ~~~~~~~~~~~ */
-int get_dur_secs(struct read_notif_pth_arg* rnpa){
-      return rnpa->dur-(time(NULL)-rnpa->dur_recvd);
+int get_dur_secs(struct client_pth_arg* cpa){
+      return cpa->dur-(time(NULL)-cpa->dur_recvd);
 }
 
-/* THIS SHOULD ONLY BE CALLED WITHIN A pthread_mutex_lock ON rnpa->rnpa_lock */
-void print_dur(struct read_notif_pth_arg* rnpa){
-      int dur = get_dur_secs(rnpa);
+/* THIS SHOULD ONLY BE CALLED WITHIN A pthread_mutex_lock ON cpa->cpa_lock */
+void print_dur(struct client_pth_arg* cpa){
+      int dur = get_dur_secs(cpa);
       printf("%s%i:%.2i%s (m:s) until %s**%s%s%s** is removed%s\r\n", ANSI_RED,
-      dur/60, dur%60, ANSI_MGNTA, ANSI_RED, ANSI_MGNTA, rnpa->rml->board_path,
+      dur/60, dur%60, ANSI_MGNTA, ANSI_RED, ANSI_MGNTA, cpa->rml->board_path,
       ANSI_RED, ANSI_NON);
 }
 
@@ -320,8 +320,8 @@ volatile _Bool run = 1;
  *    3: int   ref_no
  *    4: char* buf
  */
-void* read_notif_pth(void* rnp_arg_v){
-      struct read_notif_pth_arg* rnp_arg = (struct read_notif_pth_arg*)rnp_arg_v;
+void* read_notif_pth(void* cp_arg_v){
+      struct client_pth_arg* cp_arg = (struct client_pth_arg*)cp_arg_v;
       int ref_no, msg_type; uid_t uid;
       char buf[201];
       struct room_lst* cur_r = NULL;
@@ -329,18 +329,18 @@ void* read_notif_pth(void* rnp_arg_v){
       while(1){
             memset(buf, 0, 201);
             /* reading uid_t of sender */
-            if(read(rnp_arg->sock, &uid, sizeof(uid_t)) <= 0)break;
+            if(read(cp_arg->sock, &uid, sizeof(uid_t)) <= 0)break;
             /* reading MSGTYPE */
-            if(read(rnp_arg->sock, &msg_type, sizeof(int)) <= 0)break;
+            if(read(cp_arg->sock, &msg_type, sizeof(int)) <= 0)break;
             #ifdef ASH_DEBUG
             printf("read msg type %i\n", msg_type);
             #endif
             /* reading ref no */
-            if(read(rnp_arg->sock, &ref_no, sizeof(int)) <= 0)break;
+            if(read(cp_arg->sock, &ref_no, sizeof(int)) <= 0)break;
             #ifdef ASH_DEBUG
             printf("read ref_no: %i\n", ref_no);
             #endif
-            if(read(rnp_arg->sock, buf, 200) <= 0)break;
+            if(read(cp_arg->sock, buf, 200) <= 0)break;
             #ifdef ASH_DEBUG
             printf("string: \"%s\" read from buf\n", buf);
             #endif
@@ -348,14 +348,14 @@ void* read_notif_pth(void* rnp_arg_v){
             switch(msg_type){
                   case MSG_CREATE_THREAD:
 
-                        pthread_mutex_lock(&rnp_arg->rnpa_lock);
+                        pthread_mutex_lock(&cp_arg->cpa_lock);
 
-                        add_room_rml(rnp_arg->rml, ref_no, buf, uid, NULL),
+                        add_room_rml(cp_arg->rml, ref_no, buf, uid, NULL),
                         printf("%s%s%s: %s[ROOM_CREATE %s]%s\r\n",
-                        ANSI_GRE, get_uname(uid, rnp_arg->uname_table),
+                        ANSI_GRE, get_uname(uid, cp_arg->uname_table),
                         ANSI_NON, ANSI_RED, buf, ANSI_NON);
 
-                        pthread_mutex_unlock(&rnp_arg->rnpa_lock);
+                        pthread_mutex_unlock(&cp_arg->cpa_lock);
 
                         break;
                   case MSG_REPLY_THREAD:
@@ -363,7 +363,7 @@ void* read_notif_pth(void* rnp_arg_v){
                          * repl_pth() doesn't do any writes to rml
                          * locking here could also complicate call to insert_msg_msg_queue
                          */
-                        if((cur_r = room_lookup(*rnp_arg->rml, NULL, ref_no)))
+                        if((cur_r = room_lookup(*cp_arg->rml, NULL, ref_no)))
                         /* adding message to msg stack */
                         /* if the above code is being used, no need to check cur_r */
                         // if(cur_r)insert_msg_msg_queue(cur_r, buf, uid);
@@ -373,9 +373,9 @@ void* read_notif_pth(void* rnp_arg_v){
                   /* send out room name and creator if requested */
 
                   case MSG_RNAME_UP_REQ:
-                        cur_r = room_lookup(*rnp_arg->rml, NULL, ref_no);
+                        cur_r = room_lookup(*cp_arg->rml, NULL, ref_no);
                         if(!cur_r)break;
-                        snd_rname_update(ref_no, cur_r->label, cur_r->creator, rnp_arg->sock);
+                        snd_rname_update(ref_no, cur_r->label, cur_r->creator, cp_arg->sock);
                         break;
                   case MSG_RNAME_UP_INF:
                         /* if room is found, we don't know what to do 
@@ -384,51 +384,51 @@ void* read_notif_pth(void* rnp_arg_v){
                          */
                         /* TODO: lock after room_lookup and print statement */
 
-                        pthread_mutex_lock(&rnp_arg->rnpa_lock);
+                        pthread_mutex_lock(&cp_arg->cpa_lock);
 
-                        if(!room_lookup(*rnp_arg->rml, NULL, ref_no) &&
-                          (cur_r = add_room_rml(rnp_arg->rml, ref_no, buf, uid, NULL)))
+                        if(!room_lookup(*cp_arg->rml, NULL, ref_no) &&
+                          (cur_r = add_room_rml(cp_arg->rml, ref_no, buf, uid, NULL)))
                               printf("%s%s%s: %s[*ROOM_CREATE* %s]%s\r\n",
-                              ANSI_GRE, get_uname(cur_r->creator, rnp_arg->uname_table),
+                              ANSI_GRE, get_uname(cur_r->creator, cp_arg->uname_table),
                               ANSI_NON, ANSI_RED, buf, ANSI_NON);
 
-                        pthread_mutex_unlock(&rnp_arg->rnpa_lock);
+                        pthread_mutex_unlock(&cp_arg->cpa_lock);
 
                         break;
                   case MSG_N_MEM_INF:
                         /* TODO: should rml have a member for n_mems? */
                         /* TODO: should /l print number of members */
 
-                        pthread_mutex_lock(&rnp_arg->rnpa_lock);
+                        pthread_mutex_lock(&cp_arg->cpa_lock);
 
-                        if(!rnp_arg->n_mem_req){
-                              pthread_mutex_unlock(&rnp_arg->rnpa_lock);
+                        if(!cp_arg->n_mem_req){
+                              pthread_mutex_unlock(&cp_arg->cpa_lock);
                               break;
                         }
-                        rnp_arg->n_mem_req = 0;
+                        cp_arg->n_mem_req = 0;
 
-                        pthread_mutex_unlock(&rnp_arg->rnpa_lock);
+                        pthread_mutex_unlock(&cp_arg->cpa_lock);
 
                         printf("%s%i%s member%s connected to %s**%s%s%s**%s\r\n",
                         /* n_members are sent in the ref_no buf */
                         ANSI_RED, ref_no, ANSI_MGNTA, (ref_no > 1) ? "s are" : " is",
-                        ANSI_RED, ANSI_MGNTA, rnp_arg->rml->board_path, ANSI_RED, ANSI_NON);
+                        ANSI_RED, ANSI_MGNTA, cp_arg->rml->board_path, ANSI_RED, ANSI_NON);
                         break;
                   case MSG_DUR_ALERT:
                         /* even if we're not waiting for an alert, we can store the dur */
 
-                        pthread_mutex_lock(&rnp_arg->rnpa_lock);
+                        pthread_mutex_lock(&cp_arg->cpa_lock);
 
-                        rnp_arg->dur = ref_no;
-                        rnp_arg->dur_recvd = time(NULL);
-                        if(!rnp_arg->dur_req){
-                              pthread_mutex_unlock(&rnp_arg->rnpa_lock);
+                        cp_arg->dur = ref_no;
+                        cp_arg->dur_recvd = time(NULL);
+                        if(!cp_arg->dur_req){
+                              pthread_mutex_unlock(&cp_arg->cpa_lock);
                               break;
                         }
-                        print_dur(rnp_arg);
-                        rnp_arg->dur_req = 0;
+                        print_dur(cp_arg);
+                        cp_arg->dur_req = 0;
 
-                        pthread_mutex_unlock(&rnp_arg->rnpa_lock);
+                        pthread_mutex_unlock(&cp_arg->cpa_lock);
 
                         break;
             }
@@ -483,8 +483,8 @@ void p_rm_switch(struct room_lst* rm){
       ANSI_MGNTA, ANSI_RED, rm->label, ANSI_MGNTA, ANSI_RED, rm->ref_no, ANSI_MGNTA, ANSI_NON);
 }
 
-void* repl_pth(void* rnp_arg_v){
-      struct read_notif_pth_arg* rnp_arg = (struct read_notif_pth_arg*)rnp_arg_v;
+void* repl_pth(void* cp_arg_v){
+      struct client_pth_arg* cp_arg = (struct client_pth_arg*)cp_arg_v;
       struct room_lst* tmp_rm;
 
       char* inp = NULL, * tmp_p;
@@ -513,7 +513,7 @@ void* repl_pth(void* rnp_arg_v){
                         #ifdef ASH_DEBUG
                         case 'p':
                               for(int i = 0; i < 10; ++i)
-                                    printf("in_use[%i] == %i\n", i, rnp_arg->rml->in_use[i]);
+                                    printf("in_use[%i] == %i\n", i, cp_arg->rml->in_use[i]);
                               break;
                         #endif
                         /* both /join and /room will join an existing room */
@@ -521,11 +521,11 @@ void* repl_pth(void* rnp_arg_v){
                         case 'r':
                               if(!(tmp_p = strchr(inp, ' ')))break;
 
-                              pthread_mutex_lock(&rnp_arg->rnpa_lock);
+                              pthread_mutex_lock(&cp_arg->cpa_lock);
 
-                              tmp_rm = room_lookup(*rnp_arg->rml, tmp_p+1, -1);
+                              tmp_rm = room_lookup(*cp_arg->rml, tmp_p+1, -1);
 
-                              pthread_mutex_unlock(&rnp_arg->rnpa_lock);
+                              pthread_mutex_unlock(&cp_arg->cpa_lock);
 
                               if(!tmp_rm){
                                     printf("%sno room containing \"%s\" was found%s\n", ANSI_RED, tmp_p+1, ANSI_NON);
@@ -535,14 +535,15 @@ void* repl_pth(void* rnp_arg_v){
                               p_rm_switch(cur_room);
                               break;
                         /* go to room with ref_no */
+                        /* TODO: handle case where /g is entered with nothing after it */
                         case 'g':
                               if(!(tmp_p = strchr(inp, ' ')) || !strtoi(tmp_p+1, &tmp_ret))break;
 
-                              pthread_mutex_lock(&rnp_arg->rnpa_lock);
+                              pthread_mutex_lock(&cp_arg->cpa_lock);
 
-                              tmp_rm = room_lookup(*rnp_arg->rml, NULL, tmp_ret);
+                              tmp_rm = room_lookup(*cp_arg->rml, NULL, tmp_ret);
 
-                              pthread_mutex_unlock(&rnp_arg->rnpa_lock);
+                              pthread_mutex_unlock(&cp_arg->cpa_lock);
 
                               if(!tmp_rm)break;
                               cur_room = tmp_rm;
@@ -557,26 +558,26 @@ void* repl_pth(void* rnp_arg_v){
                               break;
                         case 'c':
                               if(!(tmp_p = strchr(inp, ' ')))break;
-                              if((tmp_ret = create_room(tmp_p+1, rnp_arg->sock))){/* TODO */}
+                              if((tmp_ret = create_room(tmp_p+1, cp_arg->sock))){/* TODO */}
                               #ifdef ASH_DEBUG
                               printf("ret val of create room: %i\n", tmp_ret);
-                              printf("sent to socket: %i\n", rnp_arg->sock);
+                              printf("sent to socket: %i\n", cp_arg->sock);
                               #endif
                               break;
                         case 'l':
 
-                              pthread_mutex_lock(&rnp_arg->rnpa_lock);
+                              pthread_mutex_lock(&cp_arg->cpa_lock);
 
-                              for(int i = 0; rnp_arg->rml->in_use[i] != -1; ++i){
-                                    for(struct room_lst* rl = rnp_arg->rml->rooms[rnp_arg->rml->in_use[i]]; rl; rl = rl->next)
+                              for(int i = 0; cp_arg->rml->in_use[i] != -1; ++i){
+                                    for(struct room_lst* rl = cp_arg->rml->rooms[cp_arg->rml->in_use[i]]; rl; rl = rl->next)
                                           printf("%s%s%s: \"%s%s%s\": %s%i%s\n",
-                                          (rl->creator == rnp_arg->rml->me) ? ANSI_BLU : ANSI_NON, 
-                                          get_uname(rl->creator, rnp_arg->uname_table), ANSI_NON,
+                                          (rl->creator == cp_arg->rml->me) ? ANSI_BLU : ANSI_NON, 
+                                          get_uname(rl->creator, cp_arg->uname_table), ANSI_NON,
                                           (rl == cur_room) ? ANSI_BLU : ANSI_NON,
                                           rl->label, ANSI_NON, (rl == cur_room) ? ANSI_BLU : ANSI_NON, rl->ref_no, ANSI_NON);
                               }
 
-                              pthread_mutex_unlock(&rnp_arg->rnpa_lock);
+                              pthread_mutex_unlock(&cp_arg->cpa_lock);
 
                               break;
                         case 'w':
@@ -590,13 +591,13 @@ void* repl_pth(void* rnp_arg_v){
                         case 'u':
                         case '#':
 
-                              pthread_mutex_lock(&rnp_arg->rnpa_lock);
+                              pthread_mutex_lock(&cp_arg->cpa_lock);
 
-                              rnp_arg->n_mem_req = 1;
+                              cp_arg->n_mem_req = 1;
 
-                              pthread_mutex_unlock(&rnp_arg->rnpa_lock);
+                              pthread_mutex_unlock(&cp_arg->cpa_lock);
 
-                              req_n_mem(rnp_arg->sock);
+                              req_n_mem(cp_arg->sock);
                               break;
                         /* exit or e[x]it */
                         case 'e':
@@ -610,24 +611,24 @@ void* repl_pth(void* rnp_arg_v){
                         /* time remaining */
                         case 't':
 
-                              pthread_mutex_lock(&rnp_arg->rnpa_lock);
+                              pthread_mutex_lock(&cp_arg->cpa_lock);
 
-                              if(rnp_arg->dur != -1 && rnp_arg->dur_recvd != -1){
-                                    print_dur(rnp_arg);
-                                    pthread_mutex_unlock(&rnp_arg->rnpa_lock);
+                              if(cp_arg->dur != -1 && cp_arg->dur_recvd != -1){
+                                    print_dur(cp_arg);
+                                    pthread_mutex_unlock(&cp_arg->cpa_lock);
                                     break;
                               }
-                              rnp_arg->dur_req = 1;
+                              cp_arg->dur_req = 1;
 
-                              pthread_mutex_unlock(&rnp_arg->rnpa_lock);
+                              pthread_mutex_unlock(&cp_arg->cpa_lock);
 
-                              req_board_duration(rnp_arg->sock);
+                              req_board_duration(cp_arg->sock);
                               break;
                         /* sends a deletion request for current board */
                         case 'd':
                               printf("%sdeletion request has been sent -- %sauthenticating%s\n",
                               ANSI_MGNTA, ANSI_RED, ANSI_NON);
-                              rm_board(rnp_arg->sock);
+                              rm_board(cp_arg->sock);
                               break;
                         case 'h':
                               p_help();
@@ -648,7 +649,7 @@ void* repl_pth(void* rnp_arg_v){
                   }
             }
             else if(good_msg)
-                  reply_room(cur_room->ref_no, inp, rnp_arg->sock);
+                  reply_room(cur_room->ref_no, inp, cp_arg->sock);
             if(free_s)free(inp);
       }
       kill(getpid(), SIGINT);
@@ -680,24 +681,24 @@ _Bool client(char* sock_path){
 
       struct rm_hash_lst rml = init_rm_hash_lst(100);
 
-      struct read_notif_pth_arg rnpa;
-      rnpa.uname_table = &ut;
-      rnpa.sock = sock;
-      rnpa.rml = &rml;
-      strncpy(rnpa.rml->board_path, sock_path, PATH_MAX);
+      struct client_pth_arg cpa;
+      cpa.uname_table = &ut;
+      cpa.sock = sock;
+      cpa.rml = &rml;
+      strncpy(cpa.rml->board_path, sock_path, PATH_MAX);
 
-      rnpa.n_mem_req = rnpa.dur_req = 0;
-      rnpa.dur = rnpa.dur_recvd = -1;
+      cpa.n_mem_req = cpa.dur_req = 0;
+      cpa.dur = cpa.dur_recvd = -1;
 
-      pthread_mutex_init(&rnpa.rnpa_lock, NULL);
+      pthread_mutex_init(&cpa.cpa_lock, NULL);
 
       pthread_t read_notif_pth_pth, repl_pth_pth;
-      /* TODO: fix possible synch issues from sharing rnpa.rml */
+      /* TODO: fix possible synch issues from sharing cpa.rml */
       /* there should be an rml mutex lock - activated each time a 
        * room is added, in_use is edited, or room_lookup is called
        */
-      pthread_create(&read_notif_pth_pth, NULL, &read_notif_pth, &rnpa);
-      pthread_create(&repl_pth_pth, NULL, &repl_pth, &rnpa);
+      pthread_create(&read_notif_pth_pth, NULL, &read_notif_pth, &cpa);
+      pthread_create(&repl_pth_pth, NULL, &repl_pth, &cpa);
 
       pthread_detach(read_notif_pth_pth);
       pthread_detach(repl_pth_pth);
@@ -714,7 +715,7 @@ _Bool client(char* sock_path){
             usleep(10000);
       }
       /* TODO: is this safe? */
-      pthread_mutex_destroy(&rnpa.rnpa_lock);
+      pthread_mutex_destroy(&cpa.cpa_lock);
       free_rm_hash_lst(rml);
       free_ash_table(&ut);
       return 1;

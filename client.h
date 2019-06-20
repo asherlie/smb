@@ -61,10 +61,9 @@ struct rm_hash_lst{
  *    info about pending requests
  *    accessing duration info
  */
-/* TODO: rename this struct - it is not just used for read_notif_pth() */
-struct read_notif_pth_arg{
+struct client_pth_arg{
       /* TODO: there should be a separate lock for each critical member of this struct */
-      pthread_mutex_t rnpa_lock;
+      pthread_mutex_t cpa_lock;
 
       /* n_mem_req and dur_req are used to keep track of whether or not to print
        * alerts when they are received
