@@ -483,6 +483,11 @@ void p_rm_switch(struct room_lst* rm){
       ANSI_MGNTA, ANSI_RED, rm->label, ANSI_MGNTA, ANSI_RED, rm->ref_no, ANSI_MGNTA, ANSI_NON);
 }
 
+void p_cmd_err(char* cmd){
+      printf("%sERR%s: unable to execute command \"%s%s%s\". it's likely that you're missing an argument%s\n",
+      ANSI_RED, ANSI_MGNTA, ANSI_RED, cmd, ANSI_MGNTA, ANSI_NON);
+}
+
 void* repl_pth(void* cp_arg_v){
       struct client_pth_arg* cp_arg = (struct client_pth_arg*)cp_arg_v;
       struct room_lst* tmp_rm;
@@ -508,7 +513,7 @@ void* repl_pth(void* cp_arg_v){
             putchar('\r');
 
             if(*inp == '/' && b_read > 1){
-                  good_msg = 0;
+                  _Bool bad_cmd = good_msg = 0;
                   switch(inp[1]){
                         #ifdef ASH_DEBUG
                         case 'p':
@@ -519,7 +524,10 @@ void* repl_pth(void* cp_arg_v){
                         /* both /join and /room will join an existing room */
                         case 'j':
                         case 'r':
-                              if(!(tmp_p = strchr(inp, ' ')))break;
+                              if(!(tmp_p = strchr(inp, ' '))){
+                                    bad_cmd = 1;
+                                    break;
+                              }
 
                               pthread_mutex_lock(&cp_arg->cpa_lock);
 
@@ -535,9 +543,11 @@ void* repl_pth(void* cp_arg_v){
                               p_rm_switch(cur_room);
                               break;
                         /* go to room with ref_no */
-                        /* TODO: handle case where /g is entered with nothing after it */
                         case 'g':
-                              if(!(tmp_p = strchr(inp, ' ')) || !strtoi(tmp_p+1, &tmp_ret))break;
+                              if(!(tmp_p = strchr(inp, ' ')) || !strtoi(tmp_p+1, &tmp_ret)){
+                                    bad_cmd = 1;
+                                    break;
+                              }
 
                               pthread_mutex_lock(&cp_arg->cpa_lock);
 
@@ -551,13 +561,19 @@ void* repl_pth(void* cp_arg_v){
                               break;
                         /* go to next room with same first character in label */
                         case 'n':
-                              if(!cur_room)break;
+                              if(!cur_room){
+                                    bad_cmd = 1;
+                                    break;
+                              }
                               /* to allow for circular cycling */
                               cur_room = (cur_room->next) ? cur_room->next : cur_room->bookend_rm;
                               p_rm_switch(cur_room);
                               break;
                         case 'c':
-                              if(!(tmp_p = strchr(inp, ' ')))break;
+                              if(!(tmp_p = strchr(inp, ' '))){
+                                    bad_cmd = 1;
+                                    break;
+                              }
                               if((tmp_ret = create_room(tmp_p+1, cp_arg->sock))){/* TODO */}
                               #ifdef ASH_DEBUG
                               printf("ret val of create room: %i\n", tmp_ret);
@@ -602,7 +618,10 @@ void* repl_pth(void* cp_arg_v){
                         /* exit or e[x]it */
                         case 'e':
                         case 'x':
-                              if(!cur_room)break;
+                              if(!cur_room){
+                                    bad_cmd = 1;
+                                    break;
+                              }
                               printf("%syou have left \"%s%s%s\" (%s%i%s)%s\n",
                               ANSI_MGNTA, ANSI_RED, cur_room->label, ANSI_MGNTA,
                               ANSI_RED, cur_room->ref_no, ANSI_MGNTA, ANSI_NON);
@@ -633,10 +652,12 @@ void* repl_pth(void* cp_arg_v){
                         case 'h':
                               p_help();
                               break;
+                        /* TODO: decide if this should be a bad cmd not a good msg */
                         default:
                               good_msg = 1;
                               break;
                   }
+                  if(bad_cmd)p_cmd_err(inp);
             }
             /* we're sending a regular message */
             if(!cur_room){
