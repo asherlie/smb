@@ -546,15 +546,20 @@ int create_mb(char* name, int duration_hrs){
       duration_adj *= 3600;
       
       /* sleep() returns remaining sleep time if interrupted */
-      /*
-       * TODO: fix /t extra time issue
-       * POSSIBLE SOLUTION:
-       * nanosleep(1e9) should be used * number of secs
-       * write a function sleep_abs that has similar behavior
-       * to sleep()
-       * each time a call to sleep() is interrupted, we gain 
-       * ~ an extra minute
-       */
+
+#if 0
+TODO:
+      we can use this signal solution in case /d is received also!
+      in this case, we set another global flag (i know...)
+      omg wait nvm we can use SIGUSR1 to call host_cleanup
+      which can delete the socket
+
+      we can now delete the hacky code that removes a socket after failing
+      to connect to it
+      this will also allow us to close() on every single socket in peers
+      before safely and quietly exiting :)
+#endif
+
       while((duration_adj = sleep(duration_adj)))
             alert_duration(peers, n_peers, duration_adj);
 
