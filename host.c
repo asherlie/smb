@@ -318,7 +318,17 @@ int assign_ref_no(){
 }
 
 void host_cleanup(){
+      pthread_mutex_lock(&host_lock);
+
+      for(int i = 0; i < n_peers; ++i)
+            if(peers[i] != -1)close(peers[i]);
+
       free(ruc.sp);
+      ruc.sp = NULL;
+
+      /* unlocking because not sure if UB to destroy a locked lock */
+      pthread_mutex_unlock(&host_lock);
+
       pthread_mutex_destroy(&host_lock);
 }
 
@@ -337,11 +347,7 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
                   log_f("remove board called with following uid's");
                   log_f_int(getuid());
                   log_f_int(sender);
-                  /* TODO: this should remove the socket */
-                  if(sender == getuid()){
-                        host_cleanup();
-                        exit(EXIT_SUCCESS);
-                  }
+                  if(sender == getuid())kill(getpid(), SIGUSR2); 
                   break;
             case MSG_REPLY_THREAD:
                   spread_msg(peers, n_peers, ref_no, str_arg, sender);
@@ -537,37 +543,28 @@ int create_mb(char* name, int duration_hrs){
        * to update duration_adj 
        */
       signal(SIGUSR1, spin);
+
       #ifndef ASH_DEBUG
       /* if we're in debug mode, ctrl-c should kill host */
       signal(SIGINT, spin);
       #endif
 
+      /* mb_handler will send a SIGUSR2 to getpid() upon /d */
+      signal(SIGUSR2, host_cleanup);
+
       /* convert duration_adj to seconds for sleep() */
       duration_adj *= 3600;
       
+      /* TODO: possibly just keep a global char* sockname and remove 
+       * it from host_cleanup() instead of sending SIGUSR2
+       */
+
+      /* ruc.sp is set to NULL by host_cleanup() */
       /* sleep() returns remaining sleep time if interrupted */
-
-#if 0
-TODO:
-      we can use this signal solution in case /d is received also!
-      in this case, we set another global flag (i know...)
-      omg wait nvm we can use SIGUSR1 to call host_cleanup
-      which can delete the socket
-
-      we can now delete the hacky code that removes a socket after failing
-      to connect to it
-      this will also allow us to close() on every single socket in peers
-      before safely and quietly exiting :)
-#endif
-
-      while((duration_adj = sleep(duration_adj)))
+      while(ruc.sp && (duration_adj = sleep(duration_adj)))
             alert_duration(peers, n_peers, duration_adj);
 
       remove(name);
 
-      /* this will keep host waiting indefinitely */
-      // pthread_join(add_host_pth_pth, NULL);
-      host_cleanup();
-      
       return 1;
 }

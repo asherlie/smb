@@ -133,9 +133,11 @@ int main(int a, char** b){
             if((board = sc_dir(".", any ? NULL : b[cre_arg], 5, ".smbr")) ||
                (board = sc_dir("/var/tmp", any ? NULL : b[cre_arg], 5, ".smbr"))){
                   _Bool cli = client(board);
-                  free(board);
+                  /* TODO: remove this - it should never happen with updated /d protocol */
+                  /* removing the vestige of an old board */
                   if(!cli)remove(board);
-                  else return 0;
+                  free(board);
+                  if(cli)return 0;
             }
       }
       if(cre_arg == -1){
