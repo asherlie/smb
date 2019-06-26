@@ -153,7 +153,7 @@ _Bool spread_msg(int* peers, int n_peers, int ref_no, char* msg, uid_t sender_ui
 
       arg.ref_no = ref_no;
       arg.msg_buf = msg;
-      arg.msg_type = MSG_REPLY_THREAD;
+      arg.msg_type = MSG_REPLY_ROOM;
       arg.sender = sender_uid;
       memset(arg.msg, 0, 201);
 
@@ -337,11 +337,11 @@ void host_cleanup(){
 _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t creator){
       uid_t sender = get_peer_cred(sender_sock);
       switch(mb_type){
-            case MSG_CREATE_THREAD:
+            case MSG_CREATE_ROOM:
                   log_f("room created with string:");
                   log_f(str_arg);
                   log_f("end_str");
-                  spread_notif(MSG_CREATE_THREAD, peers, n_peers, assign_ref_no(), str_arg, sender);
+                  spread_notif(MSG_CREATE_ROOM, peers, n_peers, assign_ref_no(), str_arg, sender);
                   break;
             case MSG_REMOVE_BOARD:
                   log_f("remove board called with following uid's");
@@ -349,7 +349,7 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
                   log_f_int(sender);
                   if(sender == getuid())kill(getpid(), SIGUSR2); 
                   break;
-            case MSG_REPLY_THREAD:
+            case MSG_REPLY_ROOM:
                   spread_msg(peers, n_peers, ref_no, str_arg, sender);
                   break;
             case MSG_RNAME_UP_REQ:
@@ -557,6 +557,7 @@ int create_mb(char* name, int duration_hrs){
       
       /* TODO: possibly just keep a global char* sockname and remove 
        * it from host_cleanup() instead of sending SIGUSR2
+       * don't love the SIGUSR2 solution
        */
 
       /* ruc.sp is set to NULL by host_cleanup() */

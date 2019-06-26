@@ -1,7 +1,7 @@
 #define _GNU_SOURCE
 
-#define MSG_CREATE_THREAD 0
-#define MSG_REPLY_THREAD  1
+#define MSG_CREATE_ROOM   0
+#define MSG_REPLY_ROOM    1
 
 /* these two msg types update unknown labels */
 #define MSG_RNAME_UP_REQ  2
@@ -29,7 +29,7 @@
 #define ANSI_BLU   "\x1b[34m"
 #define ANSI_MGNTA "\x1b[35m"
 
-#define SMB_VER    "1.4.5"
+#define SMB_VER    "1.4.6"
 
 struct mb_msg{
       /* mb_inf[

@@ -222,7 +222,7 @@ int send_mb_r(struct mb_msg mb_a, int sock){
 /* returns thread ref no */
 int create_room(char* rm_name, int sock){
       struct mb_msg mb_a;
-      mb_a.mb_inf[0] = MSG_CREATE_THREAD;
+      mb_a.mb_inf[0] = MSG_CREATE_ROOM;
       mb_a.mb_inf[1] = -1;
       mb_a.mb_inf[2] = -1;
       memset(mb_a.str_arg, 0, 201);
@@ -232,7 +232,7 @@ int create_room(char* rm_name, int sock){
 
 int reply_room(int rm_ref_no, char* msg, int sock){
       struct mb_msg mb_a;
-      mb_a.mb_inf[0] = MSG_REPLY_THREAD;
+      mb_a.mb_inf[0] = MSG_REPLY_ROOM;
       mb_a.mb_inf[1] = rm_ref_no;
       mb_a.mb_inf[2] = -1;
       memset(mb_a.str_arg, 0, 201);
@@ -346,11 +346,19 @@ void* read_notif_pth(void* cp_arg_v){
             #endif
 
             switch(msg_type){
-                  case MSG_CREATE_THREAD:
+                  case MSG_CREATE_ROOM:
 
                         pthread_mutex_lock(&cp_arg->cpa_lock);
 
-                        add_room_rml(cp_arg->rml, ref_no, buf, uid, NULL),
+                        /* TODO: allow silent mode, where room creation notifs aren't printed
+                         * /silent {on, off} can set this
+                         *
+                         * TODO: prevent spamming from host side, not passing on MSG_CREATE_ROOM from
+                         * the same socket over x times per minute
+                         */
+
+                        add_room_rml(cp_arg->rml, ref_no, buf, uid, NULL);
+
                         printf("%s%s%s: %s[ROOM_CREATE %s]%s\r\n",
                         ANSI_GRE, get_uname(uid, cp_arg->uname_table),
                         ANSI_NON, ANSI_RED, buf, ANSI_NON);
@@ -358,7 +366,7 @@ void* read_notif_pth(void* cp_arg_v){
                         pthread_mutex_unlock(&cp_arg->cpa_lock);
 
                         break;
-                  case MSG_REPLY_THREAD:
+                  case MSG_REPLY_ROOM:
                         /* TODO: confirm that there is no need to lock here
                          * repl_pth() doesn't do any writes to rml
                          * locking here could also complicate call to insert_msg_msg_queue
