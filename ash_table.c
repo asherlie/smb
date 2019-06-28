@@ -33,7 +33,8 @@ _Bool insert_ash_table(int ref, char* name, void* data, struct ash_table* table)
       cur->next = NULL;
       cur->ref = ref;
       if(name)strncpy(cur->name, name, 32);
-      if(data)cur->data = data;
+      /* we don't check if(data) before setting because we want data to default to NULL */
+      cur->data = data;
       return init;
 }
 
