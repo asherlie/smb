@@ -377,14 +377,17 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
 
                   pthread_mutex_lock(&uid_cre_table_lock);
 
+                  /* TODO: possibly add member `int int_entry` to struct ash_entry */
                   int* n_cre = (int*)lookup_data_ash_table(sender, uid_creation);
+
                   /* if this user has never created a board */
                   if(!n_cre){
                         /* TODO: free n_cre */
                         insert_ash_table(sender, NULL, (n_cre = malloc(sizeof(int))), uid_creation);
                         *n_cre = 0;
                   }
-                  /* TODO: possibly add member `int int_entry` to struct ash_entry */
+
+                  if((create = *n_cre < UID_CREATE_MAX))++(*n_cre);
 
                   pthread_mutex_unlock(&uid_cre_table_lock);
 
