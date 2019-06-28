@@ -340,19 +340,6 @@ int assign_ref_no(){
 }
 
 void host_cleanup(){
-      pthread_mutex_lock(&host_lock);
-
-      for(int i = 0; i < n_peers; ++i)
-            if(peers[i] != -1)close(peers[i]);
-
-      free(ruc.sp);
-      ruc.sp = NULL;
-
-      /* unlocking because not sure if UB to destroy a locked lock */
-      pthread_mutex_unlock(&host_lock);
-
-      pthread_mutex_destroy(&host_lock);
-
       pthread_mutex_lock(&uid_cre_table_lock);
 
       /* TODO: free all data entries of uid_creation */
@@ -361,6 +348,22 @@ void host_cleanup(){
       pthread_mutex_unlock(&uid_cre_table_lock);
 
       pthread_mutex_destroy(&uid_cre_table_lock);
+
+      pthread_mutex_lock(&host_lock);
+
+      for(int i = 0; i < n_peers; ++i)
+            if(peers[i] != -1)close(peers[i]);
+
+      /* TODO: free this - not sure why this causes a double free error */
+      /* free(ruc.sp); */
+
+      /* ruc.sp is set to NULL to permanently stop the sleep()ing */
+      ruc.sp = NULL;
+
+      /* unlocking because not sure if UB to destroy a locked lock */
+      pthread_mutex_unlock(&host_lock);
+
+      pthread_mutex_destroy(&host_lock);
 }
 
 /* TODO: add petition functionality!! */
@@ -387,6 +390,7 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
                         *n_cre = 0;
                   }
 
+                  /* TODO: there shouldn't be a hard max room numbers, implement per minute limits */
                   if((create = *n_cre < UID_CREATE_MAX))++(*n_cre);
 
                   pthread_mutex_unlock(&uid_cre_table_lock);
