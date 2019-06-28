@@ -385,7 +385,6 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
                   time_t* n_cre = (time_t*)lookup_data_ash_table(sender, uid_creation);
 
                   /* TODO: document this behavior in readme and help menus */
-                  /* TODO: let users know how long they have until new rooms can be created */
                   /*
                    * n_cre stores two values:
                    * n_cre[0] = time() that begun current minute
@@ -408,7 +407,14 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
                    * because a user can be connected twice to the same board
                    * TODO: could we just use n_cre despite this because n_cre is never decremented
                    */
-                  if(!create)break;
+                  if(!create){
+                        /* TODO: don't send a message each time a user tries to create a room they aren't allowed to
+                         * possibly create new msgtype MSG_NO_CRE_DUR_REQ and wait to recv one to send MSG_NO_CRE_DUR
+                         * or is this adding too much complexity for something that happens very infrequently?
+                         */
+                        spread_notif(MSG_NO_CRE_DUR, &sender_sock, 1, n_cre[0]+60, NULL, -1);
+                        break;
+                  }
 
                   log_f("room created with string:");
                   log_f(str_arg);

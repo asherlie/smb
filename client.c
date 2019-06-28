@@ -345,6 +345,9 @@ void* read_notif_pth(void* cp_arg_v){
             printf("string: \"%s\" read from buf\n", buf);
             #endif
 
+            /* this should be toggled by /s */
+            /* TODO: implement this */
+            /* _Bool silent = 0; */
             switch(msg_type){
                   case MSG_CREATE_ROOM:
 
@@ -359,6 +362,8 @@ void* read_notif_pth(void* cp_arg_v){
 
                         add_room_rml(cp_arg->rml, ref_no, buf, uid, NULL);
 
+                        /* TODO: implement this */
+                        /* if(!silent) */
                         printf("%s%s%s: %s[ROOM_CREATE %s]%s\r\n",
                         ANSI_GRE, get_uname(uid, cp_arg->uname_table),
                         ANSI_NON, ANSI_RED, buf, ANSI_NON);
@@ -395,7 +400,9 @@ void* read_notif_pth(void* cp_arg_v){
                         pthread_mutex_lock(&cp_arg->cpa_lock);
 
                         if(!room_lookup(*cp_arg->rml, NULL, ref_no) &&
-                          (cur_r = add_room_rml(cp_arg->rml, ref_no, buf, uid, NULL)))
+                          (cur_r = add_room_rml(cp_arg->rml, ref_no, buf, uid, NULL)))/* &&
+                          TODO: implement this
+                          !silent) */
                               printf("%s%s%s: %s[*ROOM_CREATE* %s]%s\r\n",
                               ANSI_GRE, get_uname(cur_r->creator, cp_arg->uname_table),
                               ANSI_NON, ANSI_RED, buf, ANSI_NON);
@@ -438,6 +445,14 @@ void* read_notif_pth(void* cp_arg_v){
 
                         pthread_mutex_unlock(&cp_arg->cpa_lock);
 
+                        break;
+                  case MSG_NO_CRE_DUR:
+                        {
+                        /* TODO: we shouldn't be sent a new message each time we try to create a room */
+                        int wait_secs = ref_no-time(NULL);
+                        printf("%s%i:%.2i%s (m:s) until%s you can create more rooms%s\r\n", ANSI_RED,
+                        wait_secs/60, wait_secs%60, ANSI_MGNTA, ANSI_RED, ANSI_NON);
+                        }
                         break;
             }
       }

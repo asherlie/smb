@@ -19,6 +19,9 @@
 /* alert for duration */
 #define MSG_DUR_REQ       7
 #define MSG_DUR_ALERT     8
+
+#define MSG_NO_CRE_DUR    10
+
 /* alert used for debugging */
 /* TODO: implement ASH_DEBUG msgs */
 #ifdef ASH_DEBUG
@@ -31,7 +34,7 @@
 #define ANSI_BLU   "\x1b[34m"
 #define ANSI_MGNTA "\x1b[35m"
 
-#define SMB_VER    "1.6.0"
+#define SMB_VER    "1.6.1"
 
 struct mb_msg{
       /* mb_inf[
