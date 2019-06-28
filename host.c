@@ -1,5 +1,6 @@
 #include "shared.h"
 #include "host.h"
+#include "ash_table.h"
 
 #include <pthread.h>
 #include <string.h>
@@ -14,6 +15,27 @@
 #include <signal.h>
 
 int u_ref_no = 0;
+
+/* keeps track of number of boards created by each user */
+/* TODO:
+ * should there be a hard limit per user like the current implementation?
+ *
+ * or should there be a limit per minute - possibly 100 creations
+ * per minute per user
+ *
+ * should we keep track of this on a socket basis - this would
+ * mean that the host will not be able to tell if a person has made
+ * many other rooms if they exit and reenter smb
+ *
+ * this might be preferable in some ways, though, as it limits
+ * the amount of information stored by hots
+ * it would also be as simple to implement as a counter in read_cl_pth
+ * since a thread running this is spawned with each new connection
+ * this &integer would be passed into mb_handler
+ */
+struct ash_table* uid_creation;
+pthread_mutex_t uid_cre_table_lock;
+
 
 /* this function does nothing is ASH_DEBUG is not defined */
 void log_f(char* msg){
@@ -330,18 +352,53 @@ void host_cleanup(){
       pthread_mutex_unlock(&host_lock);
 
       pthread_mutex_destroy(&host_lock);
+
+      pthread_mutex_lock(&uid_cre_table_lock);
+
+      /* TODO: free all data entries of uid_creation */
+      free_ash_table(uid_creation);
+
+      pthread_mutex_unlock(&uid_cre_table_lock);
+
+      pthread_mutex_destroy(&uid_cre_table_lock);
 }
 
 /* TODO: add petition functionality!! */
 /* pea should be compatible with no alterations */
+
 _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t creator){
       uid_t sender = get_peer_cred(sender_sock);
       switch(mb_type){
             case MSG_CREATE_ROOM:
+                  /* creating a scope for this block so that we can initialize a variable */
+                  {
+
+                  _Bool create = 1;
+
+                  pthread_mutex_lock(&uid_cre_table_lock);
+
+                  int* n_cre = (int*)lookup_data_ash_table(sender, uid_creation);
+                  /* if this user has never created a board */
+                  if(!n_cre){
+                        /* TODO: free n_cre */
+                        insert_ash_table(sender, NULL, (n_cre = malloc(sizeof(int))), uid_creation);
+                        *n_cre = 0;
+                  }
+                  /* TODO: possibly add member `int int_entry` to struct ash_entry */
+
+                  pthread_mutex_unlock(&uid_cre_table_lock);
+
+                  /* we use _Bool create and not n_cre to determine if we can create another room
+                   * because a user can be connected twice to the same board
+                   * TODO: could we just use n_cre despite this because n_cre is never decremented
+                   */
+                  if(!create)break;
+
                   log_f("room created with string:");
                   log_f(str_arg);
                   log_f("end_str");
                   spread_notif(MSG_CREATE_ROOM, peers, n_peers, assign_ref_no(), str_arg, sender);
+                  }
                   break;
             case MSG_REMOVE_BOARD:
                   log_f("remove board called with following uid's");
@@ -393,8 +450,13 @@ void init_host(){
       ruc.n = 0;
       ruc.cap = 50;
       ruc.sp = malloc(sizeof(struct sock_pair)*ruc.cap);
+
+      pthread_mutex_init(&uid_cre_table_lock, NULL);
+      uid_creation = malloc(sizeof(struct ash_table));
+      ash_table_init(uid_creation, 20);
 }
 
+/* a thread running read_cl_pth is spawned upon each new connection */
 void* read_cl_pth(void* peer_sock_v){
       int* peer_sock = ((int*)peer_sock_v);
       int mb_inf[3] = {-1, -1, -1}; char str_buf[201];
