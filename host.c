@@ -18,17 +18,19 @@ int u_ref_no = 0;
 
 /* keeps track of number of boards created by each user */
 /* TODO:
- * should there be a hard limit per user like the current implementation?
- *
- * or should there be a limit per minute - possibly 100 creations
- * per minute per user
  *
  * should we keep track of this on a socket basis - this would
  * mean that the host will not be able to tell if a person has made
  * many other rooms if they exit and reenter smb
  *
  * this might be preferable in some ways, though, as it limits
- * the amount of information stored by hots
+ * the amount of information stored by host
+ * 
+ * although, if we're worried about the host knowing the uids of peers,
+ * we need to change existing code in mb_handler()
+ * as the first line of the function is:
+ * `uid_t sender = get_peer_cred(sender_sock)`
+ *
  * it would also be as simple to implement as a counter in read_cl_pth
  * since a thread running this is spawned with each new connection
  * this &integer would be passed into mb_handler
@@ -380,18 +382,25 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
 
                   pthread_mutex_lock(&uid_cre_table_lock);
 
-                  /* TODO: possibly add member `int int_entry` to struct ash_entry */
-                  int* n_cre = (int*)lookup_data_ash_table(sender, uid_creation);
+                  time_t* n_cre = (time_t*)lookup_data_ash_table(sender, uid_creation);
 
-                  /* if this user has never created a board */
-                  if(!n_cre){
+                  /* TODO: document this behavior in readme and help menus */
+                  /* TODO: let users know how long they have until new rooms can be created */
+                  /*
+                   * n_cre stores two values:
+                   * n_cre[0] = time() that begun current minute
+                   * n_cre[1] = number of creations in current minute
+                   */
+                  time_t cur = time(NULL);
+                  /* if this user has never created a board or a minute has passed */
+                  if(!n_cre || cur > n_cre[0]+60){
                         /* TODO: free n_cre */
-                        insert_ash_table(sender, NULL, (n_cre = malloc(sizeof(int))), uid_creation);
-                        *n_cre = 0;
+                        if(!n_cre)insert_ash_table(sender, NULL, (n_cre = malloc(sizeof(time_t)*2)), uid_creation);
+                        n_cre[0] = cur;
+                        n_cre[1] = 0;
                   }
-
-                  /* TODO: there shouldn't be a hard max room numbers, implement per minute limits */
-                  if((create = *n_cre < UID_CREATE_MAX))++(*n_cre);
+                 
+                  if((create = n_cre[1] < CRE_PER_MIN))++n_cre[1];
 
                   pthread_mutex_unlock(&uid_cre_table_lock);
 
