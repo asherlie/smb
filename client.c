@@ -507,7 +507,7 @@ void p_rm_switch(struct room_lst* rm){
 }
 
 void p_cmd_err(char* cmd){
-      printf("%sERR%s: unable to execute command \"%s%s%s\". it's likely that you're missing an argument%s\n",
+      printf("%sERR%s: unable to execute command \"%s%s%s\". malformed or missing argument%s\n",
       ANSI_RED, ANSI_MGNTA, ANSI_RED, cmd, ANSI_MGNTA, ANSI_NON);
 }
 
@@ -578,7 +578,10 @@ void* repl_pth(void* cp_arg_v){
 
                               pthread_mutex_unlock(&cp_arg->cpa_lock);
 
-                              if(!tmp_rm)break;
+                              if(!tmp_rm){
+                                    bad_cmd = 1;
+                                    break;
+                              }
                               cur_room = tmp_rm;
                               p_rm_switch(cur_room);
                               break;
