@@ -35,7 +35,7 @@ int u_ref_no = 0;
  * since a thread running this is spawned with each new connection
  * this &integer would be passed into mb_handler
  */
-struct ash_table* uid_creation;
+struct ash_table uid_creation;
 pthread_mutex_t uid_cre_table_lock;
 
 
@@ -344,14 +344,16 @@ int assign_ref_no(){
 void host_cleanup(){
       pthread_mutex_lock(&uid_cre_table_lock);
 
-      for(int i = 0; i < uid_creation->bux; ++i){
-            if(uid_creation->names[i]){
-                  free(uid_creation->names[i]->data);
-                  free(uid_creation->names[i]);
+      /* we don't use free_ash_table() because we also need to free ash_table's data entry,
+       * which free_ash_table doesn't do as of now
+       */
+      /* TODO: free_ash_table() should free data */
+      for(int i = 0; i < uid_creation.bux; ++i){
+            if(uid_creation.names[i]){
+                  free(uid_creation.names[i]->data);
+                  free(uid_creation.names[i]);
             }
       }
-
-      free(uid_creation);
 
       pthread_mutex_unlock(&uid_cre_table_lock);
 
@@ -388,7 +390,7 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
 
                   pthread_mutex_lock(&uid_cre_table_lock);
 
-                  time_t* n_cre = (time_t*)lookup_data_ash_table(sender, uid_creation);
+                  time_t* n_cre = (time_t*)lookup_data_ash_table(sender, &uid_creation);
 
                   /* TODO: document this behavior in readme and help menus */
                   /*
@@ -399,7 +401,7 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
                   time_t cur = time(NULL);
                   /* if this user has never created a board or a minute has passed */
                   if(!n_cre || cur > n_cre[0]+60){
-                        if(!n_cre)insert_ash_table(sender, NULL, (n_cre = malloc(sizeof(time_t)*2)), uid_creation);
+                        if(!n_cre)insert_ash_table(sender, NULL, (n_cre = malloc(sizeof(time_t)*2)), &uid_creation);
                         n_cre[0] = cur;
                         n_cre[1] = 0;
                   }
@@ -479,8 +481,7 @@ void init_host(){
       ruc.sp = malloc(sizeof(struct sock_pair)*ruc.cap);
 
       pthread_mutex_init(&uid_cre_table_lock, NULL);
-      uid_creation = malloc(sizeof(struct ash_table));
-      ash_table_init(uid_creation, 20);
+      ash_table_init(&uid_creation, 20);
 }
 
 /* a thread running read_cl_pth is spawned upon each new connection */

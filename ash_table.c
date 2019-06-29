@@ -56,6 +56,7 @@ void* lookup_data_ash_table(int ref, struct ash_table* table){
       return e ? e->data : NULL;
 }
 
+/* TODO: implement free_ash_table_data(), which also frees data entries */
 void free_ash_table(struct ash_table* table){
       for(int i = 0; i < table->bux; ++i)
             if(table->names[i])free(table->names[i]);
