@@ -383,7 +383,6 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
 
                   time_t* n_cre = (time_t*)lookup_data_ash_table(sender, &uid_creation);
 
-                  /* TODO: document this behavior in readme and help menus */
                   /*
                    * n_cre stores two values:
                    * n_cre[0] = time() that begun current minute
