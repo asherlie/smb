@@ -19,3 +19,4 @@ char* lookup_str_ash_table(int ref, struct ash_table* table);
 void* lookup_data_ash_table(int ref, struct ash_table* table);
 struct ash_table* ash_table_init(struct ash_table* table, int bux);
 void free_ash_table(struct ash_table* table);
+void free_ash_table_data(struct ash_table* table);

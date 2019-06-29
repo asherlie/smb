@@ -344,17 +344,7 @@ int assign_ref_no(){
 void host_cleanup(){
       pthread_mutex_lock(&uid_cre_table_lock);
 
-      /* we don't use free_ash_table() because we also need to free ash_table's data entry,
-       * which free_ash_table doesn't do as of now
-       */
-      /* TODO: free_ash_table() should free data */
-      for(int i = 0; i < uid_creation.bux; ++i){
-            if(uid_creation.names[i]){
-                  free(uid_creation.names[i]->data);
-                  free(uid_creation.names[i]);
-            }
-      }
-      free(uid_creation.names);
+      free_ash_table_data(&uid_creation);
 
       pthread_mutex_unlock(&uid_cre_table_lock);
 
