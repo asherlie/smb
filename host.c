@@ -354,6 +354,7 @@ void host_cleanup(){
                   free(uid_creation.names[i]);
             }
       }
+      free(uid_creation.names);
 
       pthread_mutex_unlock(&uid_cre_table_lock);
 
