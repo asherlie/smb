@@ -1,9 +1,19 @@
 smb is a chatroom for multi user systems
 
-boards are spawned with ./smb -C and can contain arbitrarily many rooms
+boards are spawned with ./smb -C [board_name]
+or just ./smb [board_name]
+
+when smb is provided with only board_name as argument, it checks for the existence of board_name
+      if board_name does not exist, it creates it and joins it immediately
+      if board_name does exist, it joins it
+
+boards can contain arbitrarily many rooms
+
+a user can only create CRE_PER_MIN rooms per minute, this is 20 at the moment
+
 
 unless the -pwd flag or a complete file path is provided, 
-./smb -C [board_name] will create a .smbr file in /var/tmp/board_name.smbr
+board creation of [board_name] will create a .smbr file in /var/tmp/board_name.smbr
 
 the smb client will first search the current directory before checking
 /var/tmp for a matching board file
@@ -72,3 +82,5 @@ client commands:
 [ROOM_CREATE]   indicates that a new room has been created
 [*ROOM_CREATE*] upon joining a board, this alert indicates
                 that a room that predates your joining exists
+
+                there is no difference between these two types of rooms other than what is printed
