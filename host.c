@@ -344,8 +344,14 @@ int assign_ref_no(){
 void host_cleanup(){
       pthread_mutex_lock(&uid_cre_table_lock);
 
-      /* TODO: free all data entries of uid_creation */
-      free_ash_table(uid_creation);
+      for(int i = 0; i < uid_creation->bux; ++i){
+            if(uid_creation->names[i]){
+                  free(uid_creation->names[i]->data);
+                  free(uid_creation->names[i]);
+            }
+      }
+
+      free(uid_creation);
 
       pthread_mutex_unlock(&uid_cre_table_lock);
 
@@ -393,7 +399,6 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
                   time_t cur = time(NULL);
                   /* if this user has never created a board or a minute has passed */
                   if(!n_cre || cur > n_cre[0]+60){
-                        /* TODO: free n_cre */
                         if(!n_cre)insert_ash_table(sender, NULL, (n_cre = malloc(sizeof(time_t)*2)), uid_creation);
                         n_cre[0] = cur;
                         n_cre[1] = 0;
