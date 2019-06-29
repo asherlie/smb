@@ -344,7 +344,7 @@ int assign_ref_no(){
 void host_cleanup(){
       pthread_mutex_lock(&uid_cre_table_lock);
 
-      free_ash_table_data(&uid_creation);
+      free_ash_table(&uid_creation, 1);
 
       pthread_mutex_unlock(&uid_cre_table_lock);
 

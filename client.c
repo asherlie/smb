@@ -47,7 +47,7 @@ void free_rm_hash_lst(struct rm_hash_lst rml){
       }
       free(rml.rooms);
       free(rml.in_use);
-      free_ash_table(rml.ref_no_lookup);
+      free_ash_table(rml.ref_no_lookup, 0);
       free(rml.ref_no_lookup);
 }
 
@@ -761,6 +761,6 @@ _Bool client(char* sock_path){
       /* TODO: is this safe? */
       pthread_mutex_destroy(&cpa.cpa_lock);
       free_rm_hash_lst(rml);
-      free_ash_table(&ut);
+      free_ash_table(&ut, 0);
       return 1;
 }

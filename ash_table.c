@@ -56,16 +56,10 @@ void* lookup_data_ash_table(int ref, struct ash_table* table){
       return e ? e->data : NULL;
 }
 
-void free_ash_table(struct ash_table* table){
-      for(int i = 0; i < table->bux; ++i)
-            if(table->names[i])free(table->names[i]);
-      free(table->names);
-}
-
-void free_ash_table_data(struct ash_table* table){
+void free_ash_table(struct ash_table* table, _Bool free_data){
       for(int i = 0; i < table->bux; ++i)
             if(table->names[i]){
-                  free(table->names[i]->data);
+                  if(free_data)free(table->names[i]->data);
                   free(table->names[i]);
             }
       free(table->names);
