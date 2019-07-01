@@ -490,7 +490,7 @@ void p_help(){
             "/[n]ext:\n"
             "  switch to next room with same first char as current\n"
             "/[c]reate [room_name]:\n"
-            "  creates a room with name room_name\n  %s%i%s rooms can be created per user per %i minute(s)\n"
+            "  creates a room with name room_name\n  %s%i%s rooms can be created per every %s%i%s minute%s\n"
             "/[l]ist:\n"
             "  lists all rooms, current room will be %sblue%s\n"
             "/[w]hich:\n"
@@ -507,7 +507,7 @@ void p_help(){
             "  exits current room\n"
             "ctrl-c:\n"
             "  exits this program\n"
-      , ANSI_RED, CRE_PER_LIM, ANSI_NON, CRE_N_MIN, ANSI_BLU, ANSI_NON);
+      , ANSI_RED, CRE_PER_LIM, ANSI_NON, ANSI_RED, CRE_N_MIN, ANSI_NON, (CRE_N_MIN > 1) ? "s" : "", ANSI_BLU, ANSI_NON);
 }
 
 void p_rm_switch(struct room_lst* rm){
