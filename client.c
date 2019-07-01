@@ -449,6 +449,15 @@ void* read_notif_pth(void* cp_arg_v){
                   case MSG_NO_CRE_DUR:
                         {
                         /* TODO: we shouldn't be sent a new message each time we try to create a room */
+
+                        /* TODO:
+                         * even though we can't trust all clients to be friendly, we can make this client
+                         * less demanding for the host to handle - when a user tries to create a room,
+                         * we can check if they can do that based on a stored time() value recvd from
+                         * MSG_NO_CRE_DUR
+                         * host.c will still handle invalid creation requests, this just does our part
+                         * in reducing the load on the host
+                         */
                         int wait_secs = ref_no-time(NULL);
                         printf("%s%i:%.2i%s (m:s) until%s you can create more rooms%s\r\n", ANSI_RED,
                         wait_secs/60, wait_secs%60, ANSI_MGNTA, ANSI_RED, ANSI_NON);
@@ -481,7 +490,7 @@ void p_help(){
             "/[n]ext:\n"
             "  switch to next room with same first char as current\n"
             "/[c]reate [room_name]:\n"
-            "  creates a room with name room_name\n  %s%i%s rooms can be created per user per minute\n"
+            "  creates a room with name room_name\n  %s%i%s rooms can be created per user per %i minute(s)\n"
             "/[l]ist:\n"
             "  lists all rooms, current room will be %sblue%s\n"
             "/[w]hich:\n"
@@ -498,7 +507,7 @@ void p_help(){
             "  exits current room\n"
             "ctrl-c:\n"
             "  exits this program\n"
-      , ANSI_RED, CRE_PER_MIN, ANSI_NON, ANSI_BLU, ANSI_NON);
+      , ANSI_RED, CRE_PER_LIM, ANSI_NON, CRE_N_MIN, ANSI_BLU, ANSI_NON);
 }
 
 void p_rm_switch(struct room_lst* rm){
@@ -589,6 +598,7 @@ void* repl_pth(void* cp_arg_v){
                         case 'n':
                               if(!cur_room){
                                     bad_cmd = 1;
+                                    /*update malformed warning to apply to /n and /x */
                                     break;
                               }
                               /* to allow for circular cycling */

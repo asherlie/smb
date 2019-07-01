@@ -377,8 +377,6 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
                   /* creating a scope for this block so that we can initialize a variable */
                   {
 
-                  _Bool create = 1;
-
                   pthread_mutex_lock(&uid_cre_table_lock);
 
                   time_t* n_cre = (time_t*)lookup_data_ash_table(sender, &uid_creation);
@@ -390,34 +388,30 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
                    */
                   time_t cur = time(NULL);
                   /* if this user has never created a board or a minute has passed */
-                  if(!n_cre || cur > n_cre[0]+60){
+                  if(!n_cre || cur > n_cre[0]+60*CRE_N_MIN){
                         if(!n_cre)insert_ash_table(sender, NULL, (n_cre = malloc(sizeof(time_t)*2)), &uid_creation);
                         n_cre[0] = cur;
                         n_cre[1] = 0;
                   }
                  
-                  if((create = n_cre[1] < CRE_PER_MIN))++n_cre[1];
+                  if(n_cre[1] < CRE_PER_LIM){
+                        log_f("room created with string:");
+                        log_f(str_arg);
+                        log_f("end_str");
+                        spread_notif(MSG_CREATE_ROOM, peers, n_peers, assign_ref_no(), str_arg, sender);
+                        ++n_cre[1];
+                  }
+
+                  /* TODO: don't send a message each time a user tries to create a room they aren't allowed to
+                   * possibly create new msgtype MSG_NO_CRE_DUR_REQ and wait to recv one to send MSG_NO_CRE_DUR
+                   * or is this adding too much complexity for something that happens very infrequently?
+                   */
+                  else spread_notif(MSG_NO_CRE_DUR, &sender_sock, 1, n_cre[0]+60*CRE_N_MIN, NULL, -1);
 
                   pthread_mutex_unlock(&uid_cre_table_lock);
 
-                  /* we use _Bool create and not n_cre to determine if we can create another room
-                   * because a user can be connected twice to the same board
-                   * TODO: could we just use n_cre despite this because n_cre is never decremented
-                   */
-                  if(!create){
-                        /* TODO: don't send a message each time a user tries to create a room they aren't allowed to
-                         * possibly create new msgtype MSG_NO_CRE_DUR_REQ and wait to recv one to send MSG_NO_CRE_DUR
-                         * or is this adding too much complexity for something that happens very infrequently?
-                         */
-                        spread_notif(MSG_NO_CRE_DUR, &sender_sock, 1, n_cre[0]+60, NULL, -1);
-                        break;
                   }
 
-                  log_f("room created with string:");
-                  log_f(str_arg);
-                  log_f("end_str");
-                  spread_notif(MSG_CREATE_ROOM, peers, n_peers, assign_ref_no(), str_arg, sender);
-                  }
                   break;
             case MSG_REMOVE_BOARD:
                   log_f("remove board called with following uid's");

@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 
-#define CRE_PER_MIN       20
+#define CRE_PER_LIM       20
+#define CRE_N_MIN         1
 
 #define MSG_CREATE_ROOM   0
 #define MSG_REPLY_ROOM    1
@@ -34,7 +35,7 @@
 #define ANSI_BLU   "\x1b[34m"
 #define ANSI_MGNTA "\x1b[35m"
 
-#define SMB_VER    "1.6.8"
+#define SMB_VER    "1.7.0"
 
 struct mb_msg{
       /* mb_inf[
