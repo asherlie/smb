@@ -355,8 +355,7 @@ void host_cleanup(){
       for(int i = 0; i < n_peers; ++i)
             if(peers[i] != -1)close(peers[i]);
 
-      /* TODO: free this - not sure why this causes a double free error */
-      /* free(ruc.sp); */
+      free(ruc.sp); 
 
       /* ruc.sp is set to NULL to permanently stop the sleep()ing */
       ruc.sp = NULL;
@@ -431,13 +430,7 @@ _Bool mb_handler(int mb_type, int ref_no, char* str_arg, int sender_sock, uid_t 
                   pass_rname_up_inf(ref_no, sender_sock, str_arg, creator, &ruc);
                   break;
             case MSG_N_MEM_REQ:
-                  /*
-                   *find a way to lock on this - what if peers
-                   *is changed mid call
-                   */
-                  /*pthread_mutex_lock(&host_lock);*/
                   send_mem_inf(peers, n_peers);
-                  /*pthread_mutex_unlock(&host_lock);*/
                   break;
             case MSG_DUR_REQ:
                   request_alert_dur();
