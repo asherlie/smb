@@ -552,20 +552,13 @@ void* repl_pth(void* cp_arg_v){
 
       while(
             /* insert_tabcom() always returns a nonzero integer */
-            (cur_room && insert_tabcom(&tbc, /* data */ cmds, /* blk size */ sizeof(char*), /* offset */ 0, /* n options */ n_cmds))
+            ((cur_room && insert_tabcom(&tbc,
+                  /* data */ cur_room->msg_queue_base,
+                  /* blk size */ sizeof(struct msg_queue_entry),
+                  /* offset into struct msg_queue_entry where msg can be found */ (char*)cur_room->msg_queue->msg - (char*)cur_room->msg_queue,
+                  /* n options - number of cached messages */(cur_room->msg_queue-cur_room->msg_queue_base)+1)) || 1)
             &&
-            (inp = tab_complete(
-                   (cur_room) ? cur_room->msg_queue_base : NULL,
-                   sizeof(struct msg_queue_entry),
-                   /* offset into struct msg_queue_entry where msg can be found - should be zero */
-                   (cur_room) ? (char*)cur_room->msg_queue->msg - (char*)cur_room->msg_queue : 0,
-                   /* number of cached messages */
-                   (cur_room) ? (cur_room->msg_queue-cur_room->msg_queue_base)+1 : 0,
-                   /* char to iterate options */
-                   14,
-                   &b_read,
-                   &free_s
-                   ))){
+            (inp = tab_complete_tbc(&tbc, /* char to iterate options */ 14, &b_read, &free_s))){
 
             good_msg = 1;
             putchar('\r');
