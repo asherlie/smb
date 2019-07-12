@@ -9,7 +9,8 @@ char* tab_complete(void* data_douplep, int data_blk_sz, int data_offset, int opt
 
 struct tabcom* init_tabcom(struct tabcom* tbc);
 void free_tabcom(struct tabcom* tbc);
-void insert_tabcom(struct tabcom* tbc, void* data_douplep, int data_blk_sz, int data_offset, int optlen);
+int insert_tabcom(struct tabcom* tbc, void* data_douplep, int data_blk_sz, int data_offset, int optlen);
+struct tabcom_entry pop_tabcom(struct tabcom* tbc);
 
 char* tab_complete_tbc(struct tabcom* tbc, char iter_opts, int* bytes_read, _Bool* free_s);
 

@@ -196,8 +196,10 @@ void free_tabcom(struct tabcom* tbc){
       free(tbc->tbce);
 }
 
-void insert_tabcom(struct tabcom* tbc, void* data_douplep, int data_blk_sz, int data_offset, int optlen){
+int insert_tabcom(struct tabcom* tbc, void* data_douplep, int data_blk_sz, int data_offset, int optlen){
+      int ret = 1;
       if(tbc->n == tbc->cap){
+            ++ret;
             tbc->cap *= 2;
             struct tabcom_entry* tmp_tbce = malloc(sizeof(struct tabcom_entry)*tbc->cap);
             memcpy(tmp_tbce, tbc->tbce, sizeof(struct tabcom_entry)*tbc->n);
@@ -209,6 +211,11 @@ void insert_tabcom(struct tabcom* tbc, void* data_douplep, int data_blk_sz, int 
       tbc->tbce[tbc->n].data_blk_sz = data_blk_sz;
       tbc->tbce[tbc->n].data_offset = data_offset;
       tbc->tbce[tbc->n++].optlen = optlen;
+      return ret;
+}
+
+struct tabcom_entry pop_tabcom(struct tabcom* tbc){
+      return tbc->tbce[--tbc->n];
 }
 
 char* tab_complete_tbc(struct tabcom* tbc, char iter_opts, int* bytes_read, _Bool* free_s){
