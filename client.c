@@ -528,7 +528,33 @@ void* repl_pth(void* cp_arg_v){
       int b_read, tmp_ret;
       _Bool good_msg, free_s;
 
-      while((inp = tab_complete(
+      char* cmds[] = {"/help", "/time", "/join", "/room", "/goto", "/next",
+                      "/create", "/list", "/which", "/user", "/#", "/delete", 
+                      "/exit", "/x"};
+      int n_cmds = 14;
+
+      struct tabcom tbc;
+      init_tabcom(&tbc);
+
+      /* inserting commands to tabcom */
+
+      insert_tabcom(
+            &tbc,
+            /* data */
+            cmds,
+            /* blk size */
+            sizeof(char*),
+            /* offset */
+            0,
+            /* n options */
+            n_cmds
+      );
+
+      while(
+            /* insert_tabcom() always returns a nonzero integer */
+            (cur_room && insert_tabcom(&tbc, /* data */ cmds, /* blk size */ sizeof(char*), /* offset */ 0, /* n options */ n_cmds))
+            &&
+            (inp = tab_complete(
                    (cur_room) ? cur_room->msg_queue_base : NULL,
                    sizeof(struct msg_queue_entry),
                    /* offset into struct msg_queue_entry where msg can be found - should be zero */
@@ -708,7 +734,16 @@ void* repl_pth(void* cp_arg_v){
             else if(good_msg)
                   reply_room(cur_room->ref_no, inp, cp_arg->sock);
             if(free_s)free(inp);
+
+            /* we're removing the last tabcom which is the
+             * message queue from the now finished iteration
+             * to make room for the next one
+             *
+             * tbc.n will never be > 2
+             */
+            if(tbc.n == 2)pop_tabcom(&tbc);
       }
+      free_tabcom(&tbc);
       kill(getpid(), SIGINT);
       return NULL;
 }
