@@ -558,7 +558,7 @@ void* repl_pth(void* cp_arg_v){
                   /* offset into struct msg_queue_entry where msg can be found */ (char*)cur_room->msg_queue->msg - (char*)cur_room->msg_queue,
                   /* n options - number of cached messages */(cur_room->msg_queue-cur_room->msg_queue_base)+1)) || 1)
             &&
-            (inp = tab_complete_tbc(&tbc, /* char to iterate options */ 14, &b_read, &free_s))){
+            (inp = tab_complete(&tbc, /* char to iterate options */ 14, &b_read, &free_s))){
 
             good_msg = 1;
             putchar('\r');
