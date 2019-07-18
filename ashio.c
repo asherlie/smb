@@ -35,7 +35,7 @@ void reset_term(){
  * the terminal to be in raw mode as well
  */
 
-char* getline_raw(int* bytes_read, _Bool* tab, int* ignore){
+char* getline_raw_internal(char* base, int baselen, int* bytes_read, _Bool* tab, int* ignore){
       tcgetattr(0, &raw);
       tcgetattr(0, &def);
       cfmakeraw(&raw);
@@ -43,9 +43,16 @@ char* getline_raw(int* bytes_read, _Bool* tab, int* ignore){
       char c;
 
       int buf_sz = 2;
-      char* ret = calloc(buf_sz, 1);
+      char* ret = calloc(baselen+buf_sz, 1);
 
       *tab = (*bytes_read = 0);
+
+      /*
+       * since in raw mode, we can prepend our base str
+       * what if the base str has been deleted --
+       * we need to add it to string in progress too
+       */
+      for(int i = 0; i < baselen; ++i)putc(base[i], stdout);
 
       while((c = fgetc(stdin)) != '\r'){
             if(ignore){
@@ -88,8 +95,9 @@ char* getline_raw(int* bytes_read, _Bool* tab, int* ignore){
       return ret;
 }
 
-
-/* TODO: document everything below */
+char* getline_raw(int* bytes_read, _Bool* tab, int* ignore){
+      return getline_raw_internal(NULL, 0, bytes_read, tab, ignore);
+}
 
 /* tabcom operations */
 
@@ -130,26 +138,22 @@ struct tabcom_entry pop_tabcom(struct tabcom* tbc){
       return tbc->tbce[--tbc->n];
 }
 
-/* tab_complete behaves like getline(), but does not include \n char in returned string */
-/* *free_s is set to 1 if returned buffer should be freed */
-char* tab_complete(struct tabcom* tbc, char iter_opts, int* bytes_read, _Bool* free_s){
-      _Bool tab, found_m;
+char* tab_complete_internal(struct tabcom* tbc, char* base_str, int bs_len, char iter_opts, int* bytes_read, _Bool* free_s){
+      _Bool tab;
       /* this should be called until enter is sent
        * results should be appeded to a master string
        */
-      char* ret = getline_raw(bytes_read, &tab, NULL), * tmp_ch;
+      char* ret = getline_raw_internal(base_str, bs_len, bytes_read, &tab, NULL), * tmp_ch = NULL;
       *free_s = 1;
       if(tab && tbc){
-            found_m = 0;
             _Bool select = 0;
             int maxlen = *bytes_read, tmplen;
             while(!select){
                   for(int tbc_i = 0; tbc_i < tbc->n; ++tbc_i){
                         for(int i = 0; i <= tbc->tbce[tbc_i].optlen; ++i){
-                              /* we treat i == optlen as input string */
+                              /* we treat i == optlen of the last index of tbc as the input string */
                               if(i == tbc->tbce[tbc_i].optlen){
-                                    if(tbc_i != tbc->n-1)continue;
-                                    tmp_ch = ret;
+                                    if(tbc_i == tbc->n-1)tmp_ch = ret;
                               }
                               else{
                                     void* inter = ((char*)tbc->tbce[tbc_i].data_douplep+(i*tbc->tbce[tbc_i].data_blk_sz)+tbc->tbce[tbc_i].data_offset);
@@ -157,10 +161,9 @@ char* tab_complete(struct tabcom* tbc, char iter_opts, int* bytes_read, _Bool* f
                                     /* can't exactly remember this logic -- kinda hard to reason about */
                                     if(tbc->tbce[tbc_i].data_blk_sz == sizeof(char*))tmp_ch = *((char**)inter);
                                     else tmp_ch = (char*)inter;
+                                    /* printf("[%i][%i]: (%s, %s)\n", tbc_i, i, ret, tmp_ch); */
                               }
                               if(strstr(tmp_ch, ret)){
-                                    found_m = 1;
-
                                     /* printing match to screen and removing chars from * old string */
                                     tmplen = (tmp_ch == ret) ? *bytes_read : (int)strlen(tmp_ch);
                                     putchar('\r');
@@ -199,16 +202,28 @@ char* tab_complete(struct tabcom* tbc, char iter_opts, int* bytes_read, _Bool* f
                                     if(select)break;
                                     continue;
                               }
-                              /* TODO: in this case, allow user to enter more chars */
-                              /* possible implementation below */
-                              else if(i == tbc->tbce[tbc_i].optlen-1 && !found_m){
-                                    select = 1;
-                                    break;
-                              }
+                              /* TODO: remove
+                               * this will never occur - we append the user's string to the list of options
+                               */
+                              /*
+                               *else if(tbc_i == tbc->n-1 && i == tbc->tbce[tbc_i].optlen-1 && !found_m){
+                               *[> TODO: in this case, allow user to enter more chars <]
+                               *[> possible implementation below <]
+                               *[>else if(i == tbc->tbce[tbc_i].optlen-1 && !found_m){<]
+                               *      select = 1;
+                               *      break;
+                               *}
+                               */
                               if(select)break;
                         }
                   }
             }
       }
       return ret;
+}
+
+/* tab_complete behaves like getline(), but does not include \n char in returned string */
+/* *free_s is set to 1 if returned buffer should be freed */
+char* tab_complete(struct tabcom* tbc, char iter_opts, int* bytes_read, _Bool* free_s){
+      return tab_complete_internal(tbc, NULL, 0, iter_opts, bytes_read, free_s);
 }

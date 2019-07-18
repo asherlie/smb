@@ -23,5 +23,5 @@ void reset_term();
 /* reading from stdin */
 
 char* getline_raw(int* bytes_read, _Bool* tab, int* ignore);
-char* tab_complete(struct tabcom* tbc, char iter_opts, int* bytes_read, _Bool* free_s);
 
+char* tab_complete(struct tabcom* tbc, char iter_opts, int* bytes_read, _Bool* free_s);
