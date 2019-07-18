@@ -1,3 +1,5 @@
+#define ASHIO_VER "1.0.0"
+
 struct tabcom_entry{
       void* data_douplep;
       int data_blk_sz, data_offset, optlen;

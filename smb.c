@@ -86,7 +86,7 @@ int main(int a, char** b){
             if(*b[i] == '-'){
                   switch(b[i][1]){
                         case 'v':
-                              printf("smb version %s\n", SMB_VER);
+                              printf("smb version %s with ashio version %s\n", SMB_VER, ASHIO_VER);
                               return 0;
                         case 'h':
                               p_usage(*b);

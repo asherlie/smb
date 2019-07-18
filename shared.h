@@ -35,7 +35,9 @@
 #define ANSI_BLU   "\x1b[34m"
 #define ANSI_MGNTA "\x1b[35m"
 
-#define SMB_VER    "1.8.2"
+#define SMB_VER    "1.8.3"
+
+#include "ashio.h"
 
 struct mb_msg{
       /* mb_inf[
