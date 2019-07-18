@@ -198,7 +198,20 @@ char* tab_complete_internal(struct tabcom* tbc, char* base_str, int bs_len, char
                                                 break;
                                           }
                                           if(ch == iter_opts)break;
-                                          /*goto more_chars;*/
+
+                                          reset_term();
+
+                                          /* we need to pass along the choice that we're currently on
+                                           * before we can recurse, though, we need to append ch to the string
+                                           */
+
+                                          char base_str_recurse[tmplen+1];
+                                          memcpy(base_str_recurse, tmp_ch, tmplen);
+                                          base_str_recurse[tmplen] = ch;
+
+                                          /* this is a pretty nice solution :) */
+
+                                          return tab_complete_internal(tbc, base_str_recurse, tmplen+1, iter_opts, bytes_read, free_s);
                                     }
 
                                     reset_term();
@@ -206,18 +219,7 @@ char* tab_complete_internal(struct tabcom* tbc, char* base_str, int bs_len, char
                                     if(select)break;
                                     continue;
                               }
-                              /* TODO: remove
-                               * this will never occur - we append the user's string to the list of options
-                               */
-                              /*
-                               *else if(tbc_i == tbc->n-1 && i == tbc->tbce[tbc_i].optlen-1 && !found_m){
-                               *[> TODO: in this case, allow user to enter more chars <]
-                               *[> possible implementation below <]
-                               *[>else if(i == tbc->tbce[tbc_i].optlen-1 && !found_m){<]
-                               *      select = 1;
-                               *      break;
-                               *}
-                               */
+                              /* TODO: is this necessary? */
                               if(select)break;
                         }
                   }
