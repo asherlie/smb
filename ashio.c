@@ -42,17 +42,21 @@ char* getline_raw_internal(char* base, int baselen, int* bytes_read, _Bool* tab,
       raw_mode();
       char c;
 
-      int buf_sz = 2;
-      char* ret = calloc(baselen+buf_sz, 1);
+      int buf_sz = 2+baselen;
+      char* ret = calloc(buf_sz, 1);
 
-      *tab = (*bytes_read = 0);
+      *tab = 0;
+      *bytes_read = (baselen && base) ? baselen : 0;
 
       /*
        * since in raw mode, we can prepend our base str
        * what if the base str has been deleted --
        * we need to add it to string in progress too
        */
-      for(int i = 0; i < baselen; ++i)putc(base[i], stdout);
+      for(int i = 0; i < baselen; ++i){
+            ret[i] = base[i];
+            putc(base[i], stdout);
+      }
 
       while((c = fgetc(stdin)) != '\r'){
             if(ignore){
