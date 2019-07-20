@@ -81,7 +81,8 @@ char* getline_raw_internal(char* base, int baselen, int* bytes_read, _Bool* tab,
                   printf("\r%s%c\r%s", ret, ' ', ret);
                   continue;
             }
-            if(*bytes_read == buf_sz){
+            /* buf_sz-1 to leave room for \0 */
+            if(*bytes_read == buf_sz-1){
                   buf_sz *= 2;
                   char* tmp_s = calloc(buf_sz, 1);
                   memcpy(tmp_s, ret, *bytes_read);
@@ -89,6 +90,7 @@ char* getline_raw_internal(char* base, int baselen, int* bytes_read, _Bool* tab,
                   ret = tmp_s;
             }
             ret[(*bytes_read)++] = c;
+            ret[*bytes_read] = 0;
             putchar(c);
       }
       /* before exiting, we restore term to its
@@ -144,9 +146,6 @@ struct tabcom_entry pop_tabcom(struct tabcom* tbc){
 
 char* tab_complete_internal(struct tabcom* tbc, char* base_str, int bs_len, char iter_opts, int* bytes_read, _Bool* free_s){
       _Bool tab;
-      /* this should be called until enter is sent
-       * results should be appeded to a master string
-       */
       char* ret = getline_raw_internal(base_str, bs_len, bytes_read, &tab, NULL), * tmp_ch = NULL;
       *free_s = 1;
       if(tab && tbc){
@@ -155,8 +154,15 @@ char* tab_complete_internal(struct tabcom* tbc, char* base_str, int bs_len, char
             while(!select){
                   for(int tbc_i = 0; tbc_i < tbc->n; ++tbc_i){
                         for(int i = 0; i <= tbc->tbce[tbc_i].optlen; ++i){
+                              /* TODO: improve readability */
+                              /* select being set to 1 here indicates that we've received a ctrl-c */
+                              if(select)break;
                               /* we treat i == optlen of the last index of tbc as the input string */
                               if(i == tbc->tbce[tbc_i].optlen){
+                                    /* setting tmp_ch to NULL to indicate that we should skip
+                                     * this index if the condition below is not met
+                                     */
+                                    tmp_ch = NULL;
                                     if(tbc_i == tbc->n-1)tmp_ch = ret;
                               }
                               else{
@@ -167,7 +173,7 @@ char* tab_complete_internal(struct tabcom* tbc, char* base_str, int bs_len, char
                                     else tmp_ch = (char*)inter;
                                     /* printf("[%i][%i]: (%s, %s)\n", tbc_i, i, ret, tmp_ch); */
                               }
-                              if(strstr(tmp_ch, ret)){
+                              if(tmp_ch && strstr(tmp_ch, ret)){
                                     /* printing match to screen and removing chars from * old string */
                                     tmplen = (tmp_ch == ret) ? *bytes_read : (int)strlen(tmp_ch);
                                     putchar('\r');
@@ -205,9 +211,13 @@ char* tab_complete_internal(struct tabcom* tbc, char* base_str, int bs_len, char
                                            * before we can recurse, though, we need to append ch to the string
                                            */
 
+                                          /* TODO: handle ch as delete or backspace key */
+                                          /* in this case, we'd need to shorten base_str_recurse
+                                           */
                                           char base_str_recurse[tmplen+1];
                                           memcpy(base_str_recurse, tmp_ch, tmplen);
                                           base_str_recurse[tmplen] = ch;
+                                          if(*free_s)free(ret);
 
                                           /* this is a pretty nice solution :) */
 
@@ -216,9 +226,11 @@ char* tab_complete_internal(struct tabcom* tbc, char* base_str, int bs_len, char
 
                                     reset_term();
 
+                                    /* TODO: improve readability */
                                     if(select)break;
                                     continue;
                               }
+                              /* TODO: improve readability */
                               /* TODO: is this necessary? */
                               if(select)break;
                         }
