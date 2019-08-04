@@ -148,10 +148,8 @@ struct tabcom_entry pop_tabcom(struct tabcom* tbc){
       return tbc->tbce[--tbc->n];
 }
 
-/* TODO: possibly add int* param that's set to n_entries */
-/* returns a NULL terminated list strings */
+/* returns a NULL terminated list of strings of size *n_matches */
 char** find_matches(struct tabcom* tbc, char* needle, int* n_matches){
-      /* TODO: ret can be of size +1 if the user will always know the size */
       /* TODO: dynamically resize */
       char** ret = malloc(sizeof(char*)*(tbc->n_flattened+2)), * tmp_ch;
 
@@ -168,7 +166,7 @@ char** find_matches(struct tabcom* tbc, char* needle, int* n_matches){
             }
       }
       ret[sz++] = needle;
-      ret[sz] = NULL;
+      ret[sz] = 0;
       *n_matches = sz;
       return ret;
 }
@@ -194,7 +192,7 @@ int narrow_matches(char** cpp, char* needle){
             if(!strstr(*i, needle)){
                   ++n_removed;
                   for(char** j = i; *j; ++j){
-                        /* this should implicitly deal with moving over the NULL */
+                        /* this implicitly deals with moving over the NULL */
                         *j = j[1];
                   }
                   --i;
@@ -331,7 +329,36 @@ struct shared_d{
       _Bool thread_spawned;
       /* this field is used only if !thread_spawned */
       int n_matches;
+
+      /* these fields are used to keep track of malloc'd strings that need to be freed */
+      int n_free, cap_free;
+      char** cp_free;
 };
+
+void init_shared(struct shared_d* shared){
+      shared->thread_spawned = 0;
+      shared->n_matches = 0;
+      shared->n_free = 0;
+      shared->cap_free = 10;
+      shared->cp_free = malloc(shared->cap_free*sizeof(char*));
+}
+
+void track_str(struct shared_d* shared, char* str){
+      if(shared->n_free == shared->cap_free){
+            shared->cap_free *= 2;
+            char** tmp_free = malloc(shared->cap_free*sizeof(char*));
+            memcpy(tmp_free, shared->cp_free, sizeof(char*)*shared->n_free);
+            free(shared->cp_free);
+            shared->cp_free = tmp_free;
+      }
+      shared->cp_free[shared->n_free++] = str;
+}
+
+void free_tracked(struct shared_d* shared){
+      for(int i = 0; i < shared->n_free; ++i)
+            free(shared->cp_free[i]);
+      free(shared->cp_free);
+}
 
 pthread_t fmp;
 
@@ -373,7 +400,6 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, struct
                    */
                   if(base_str && bs_len && n_char_equiv(base_str, ret, bs_len)){
                         match = *base_match;
-                        new_search = !*match;
                         new_search = 0;
                         /* last index of match must be overwritten to be user input */
                         match[n_matches-1] = ret;
@@ -488,9 +514,7 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, struct
                         /* TODO: is it a safe assumption that the last index of match
                          * will always be user input 
                          */
-                        match[n_matches-1] = malloc(tmplen);
-                        /**end_ptr = malloc(tmplen);*/
-                        /*memcpy(*end_ptr, recurse_str, tmplen);*/
+                        track_str(shared, (match[n_matches-1] = malloc(tmplen)));
                         memcpy(match[n_matches-1], recurse_str, tmplen);
 
                         shared->n_matches = n_matches-narrow_matches(match, recurse_str);
@@ -507,6 +531,7 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, struct
             /*if(base_match && *end_ptr)free(*end_ptr);*/
             free(match);
       }
+      free_tracked(shared);
       return ret;
 }
 
@@ -517,8 +542,7 @@ char* tab_complete(struct tabcom* tbc, char iter_opts[2], int* bytes_read, _Bool
       return tab_complete_internal(tbc, NULL, 0, *iter_opts, bytes_read, free_s);
       #else
       struct shared_d shared;
-      shared.thread_spawned = 0;
-      shared.n_matches = 0;
+      init_shared(&shared);
       char* ret = tab_complete_internal_extra_mem_low_computation(tbc, &shared, NULL, 0, NULL, iter_opts, bytes_read, free_s);
       return ret;
       #endif
