@@ -149,12 +149,10 @@ struct tabcom_entry pop_tabcom(struct tabcom* tbc){
 
 /* TODO: possibly add int* param that's set to n_entries */
 /* returns a NULL terminated list strings */
-char** find_matches(struct tabcom* tbc, char* needle){
+char** find_matches(struct tabcom* tbc, char* needle, int* n_matches){
+      /* TODO: ret can be of size +1 if the user will always know the size */
       /* TODO: dynamically resize */
-      int n_entries = 0;
-      for(int i = 0; i < tbc->n; ++i)
-            n_entries += tbc->tbce[i].optlen;
-      char** ret = malloc(sizeof(char*)*(n_entries+2)), * tmp_ch;
+      char** ret = malloc(sizeof(char*)*(tbc->n_flattened+2)), * tmp_ch;
 
       int sz = 0;
       for(int i = 0; i < tbc->n; ++i){
@@ -170,6 +168,7 @@ char** find_matches(struct tabcom* tbc, char* needle){
       }
       ret[sz++] = needle;
       ret[sz] = NULL;
+      *n_matches = sz;
       return ret;
 }
 
@@ -182,22 +181,24 @@ struct find_matches_arg{
 
 void* find_matches_pth(void* fma_v){
       struct find_matches_arg* fma = (struct find_matches_arg*)fma_v;
-      *fma->ret = find_matches(fma->tbc, fma->needle);
-      pthread_exit(EXIT_SUCCESS);
+      int n_matches;
+      *fma->ret = find_matches(fma->tbc, fma->needle, &n_matches);
+      return (void*)n_matches;
 }
 
-void narrow_matches(char** cpp, char* needle){
-      int ind = 0;
+int narrow_matches(char** cpp, char* needle){
+      int n_removed = 0;
       for(char** i = cpp; *i; ++i){
             if(!strstr(*i, needle)){
+                  ++n_removed;
                   for(char** j = i; *j; ++j){
                         /* this should implicitly deal with moving over the NULL */
                         *j = j[1];
                   }
                   --i;
             }
-            ++ind;
       }
+      return n_removed;
 }
 
 char* tab_complete_internal(struct tabcom* tbc, char* base_str, int bs_len, char iter_opts, int* bytes_read, _Bool* free_s){
@@ -311,6 +312,7 @@ char* tab_complete_internal(struct tabcom* tbc, char* base_str, int bs_len, char
       return ret;
 }
 
+/* x is base_str, y is string checking against it */
 _Bool n_char_equiv(char* x, char* y, int n){
       for(int i = 0; i < n; ++i)
             if(!x[i] || !y[i] || x[i] != y[i])return 0;
@@ -323,9 +325,13 @@ void clear_line(int len, char* str){
       putchar('\r');
 }
 
+struct shared_d{
+      _Bool thread_spawned;
+};
+
 pthread_t fmp;
 
-char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, char* base_str, int bs_len, char*** base_match, char iter_opts[2], int* bytes_read, _Bool* free_s){
+char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, struct shared_d* shared, char* base_str, int bs_len, char*** base_match, char iter_opts[2], int* bytes_read, _Bool* free_s){
       /* TODO: each time we recurse check to see if any chars have been deleted
        * should be easy we can just set a flag because we have to manually handle that
        * anyway
@@ -352,17 +358,26 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, char* 
 
       if(tab && tbc){
 
+            int n_matches;
+
             {
             _Bool new_search = 1;
             if(base_match){
-                  pthread_join(fmp, NULL);
-                  /* n_char_equiv is essentially checking if chars have been removed in getline_raw() */
+                  /* if base_match was computed in a separate thread we'll have to join it */
+                  if(shared->thread_spawned){
+                        pthread_join(fmp, (void*)&n_matches);
+                        shared->thread_spawned = 0;
+                  }
+                  /* n_char_equiv is essentially checking if chars have been removed in getline_raw()
+                   * this is the only circumstance that base_match is usable
+                   */
                   if(base_str && bs_len && n_char_equiv(base_str, ret, bs_len)){
-                        /*pthread_mutex_lock(&match_gen_lock);*/
                         match = *base_match;
-                        /*pthread_mutex_unlock(&match_gen_lock);*/
                         new_search = !*match;
                         new_search = 0;
+                        /* last index of match must be overwritten to be user input */
+                        match[n_matches-1] = ret;
+                        n_matches -= narrow_matches(match, ret);
                   }
             }
             if(new_search){
@@ -373,7 +388,7 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, char* 
                         free(*base_match);
                         /*pthread_mutex_unlock(&match_gen_lock);*/
                   }
-                  match = find_matches(tbc, ret);
+                  match = find_matches(tbc, ret, &n_matches);
             }
             }
 
@@ -424,10 +439,7 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, char* 
                         }
                         /* TODO: find_matches should inform us of size of match */
                         /* if we aren't aware of the last index of match */
-                        if(!end_ptr){
-                              /* tmp_str can't possibly be farther back than match */
-                              for(end_ptr = tmp_str; end_ptr[1]; ++end_ptr);
-                        }
+                        if(!end_ptr)end_ptr = tmp_str+(n_matches-1);
                         tmp_str = end_ptr;
                         continue;
                   }
@@ -460,6 +472,7 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, char* 
                         clear_line(tmplen, "");
                         recurse_str[--tmplen] = 0;
                         /* deletion makes match useless for recurse */
+                        /* TODO: this might be bad if match == base_match */
                         free(match);
 
                         /* we're generating matches in a new thread before we make next
@@ -476,14 +489,18 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, char* 
                         fma.needle = recurse_str;
                         fma.tbc = tbc;
                         fma.ret = &match;
+                        shared->thread_spawned = 1;
                         pthread_create(&fmp, NULL, &find_matches_pth, &fma);
                   }
                   else{
-                        if(!end_ptr)
-                              for(end_ptr = tmp_str; end_ptr[1]; ++end_ptr);
+                        /*shared->thread_spawned = 0;*/
+                        if(!end_ptr)end_ptr = tmp_str+(n_matches-1);
                         recurse_str[tmplen++] = ch;
                         recurse_str[tmplen] = 0;
                         /* adjusting the last index of match to user input */
+                        /* TODO: is it a safe assumption that the last index of match
+                         * will always be user input 
+                         */
                         *end_ptr = malloc(tmplen);
                         memcpy(*end_ptr, recurse_str, tmplen);
 
@@ -492,7 +509,7 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, char* 
                   if(*free_s)free(ret);
 
                   reset_term();
-                  return tab_complete_internal_extra_mem_low_computation(tbc, recurse_str, tmplen, &match, iter_opts, bytes_read, free_s);
+                  return tab_complete_internal_extra_mem_low_computation(tbc, shared, recurse_str, tmplen, &match, iter_opts, bytes_read, free_s);
 
             }
 
@@ -510,7 +527,9 @@ char* tab_complete(struct tabcom* tbc, char iter_opts[2], int* bytes_read, _Bool
       #if LOW_MEM
       return tab_complete_internal(tbc, NULL, 0, *iter_opts, bytes_read, free_s);
       #else
-      char* ret = tab_complete_internal_extra_mem_low_computation(tbc, NULL, 0, NULL, iter_opts, bytes_read, free_s);
+      struct shared_d shared;
+      shared.thread_spawned = 0;
+      char* ret = tab_complete_internal_extra_mem_low_computation(tbc, &shared, NULL, 0, NULL, iter_opts, bytes_read, free_s);
       return ret;
       #endif
 }
