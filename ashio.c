@@ -212,7 +212,6 @@ char* tab_complete_internal(struct tabcom* tbc, char* base_str, int bs_len, char
             while(!select){
                   for(int tbc_i = 0; tbc_i < tbc->n; ++tbc_i){
                         for(int i = 0; i <= tbc->tbce[tbc_i].optlen; ++i){
-                              /* TODO: improve readability */
                               /* select being set to 1 here indicates that we've received a ctrl-c */
                               if(select)break;
                               /* we treat i == optlen of the last index of tbc as the input string */
@@ -229,18 +228,7 @@ char* tab_complete_internal(struct tabcom* tbc, char* base_str, int bs_len, char
                                     /* can't exactly remember this logic -- kinda hard to reason about */
                                     if(tbc->tbce[tbc_i].data_blk_sz == sizeof(char*))tmp_ch = *((char**)inter);
                                     else tmp_ch = (char*)inter;
-                                    /* printf("[%i][%i]: (%s, %s)\n", tbc_i, i, ret, tmp_ch); */
                               }
-                              #if 0 
-                              should we first iterate through all strings and find all matches?
-                              this would make it very easy to iterate both backwards and forward
-                              the only thing is that it would take a lot of time to compute this initially
-                              
-                              we could do this original finding of matches in a separate thread!!
-                              this would also help to make this program more modular
-
-                              in this case if the user starts iterating while the structure is being built its nbd
-                              #endif
 
                               if(tmp_ch && strstr(tmp_ch, ret)){
                                     /* printing match to screen and removing chars from * old string */
@@ -298,11 +286,9 @@ char* tab_complete_internal(struct tabcom* tbc, char* base_str, int bs_len, char
 
                                     reset_term();
 
-                                    /* TODO: improve readability */
                                     if(select)break;
                                     continue;
                               }
-                              /* TODO: improve readability */
                               /* TODO: is this necessary? */
                               if(select)break;
                         }
@@ -325,6 +311,7 @@ void clear_line(int len, char* str){
       putchar('\r');
 }
 
+/* this struct keeps track of information between recursive calls to tab_complete_internal_low_comp() */
 struct shared_d{
       _Bool thread_spawned;
       /* this field is used only if !thread_spawned */
@@ -362,19 +349,19 @@ void free_tracked(struct shared_d* shared){
 
 pthread_t fmp;
 
-char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, struct shared_d* shared, char* base_str, int bs_len, char*** base_match, char iter_opts[2], int* bytes_read, _Bool* free_s){
-      /* TODO:
-       * all narrowing and recreating/rescanning/initial scanning should be done in different threads
-       *
-       * i actually think this is important
-       * each time a character is entered we create an initial scan
-       * or maybe when strings with >= 2 chars are entered
-       *
-       * i can even create a system where each time a new char is appended we can add a new char** of
-       * adjustments to the base char** 
-       * each time a char is deleted from current stream we pop off the relevant char**
-       * until the base char** which was created from find_matches() has been removed
-       */
+/* TODO:
+ * all narrowing and recreating/rescanning/initial scanning should be done in different threads
+ *
+ * i actually think this is important
+ * each time a character is entered we create an initial scan
+ * or maybe when strings with >= 2 chars are entered
+ *
+ * i can even create a system where each time a new char is appended we can add a new char** of
+ * adjustments to the base char** 
+ * each time a char is deleted from current stream we pop off the relevant char**
+ * until the base char** which was created from find_matches() has been removed
+ */
+char* tab_complete_internal_low_comp(struct tabcom* tbc, struct shared_d* shared, char* base_str, int bs_len, char*** base_match, char iter_opts[2], int* bytes_read, _Bool* free_s){
       _Bool tab;
       char* ret = getline_raw_internal(base_str, bs_len, bytes_read, &tab, NULL), ** tmp_str, ** match = NULL;
       /* ret is only null if ctrl-c */
@@ -491,7 +478,7 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, struct
                         /* we're generating matches in a new thread before we make next
                          * recursive call
                          * it's safe to assume that matches will be found before geline_raw() returns
-                         * in the next call to tab_complete_internal_extra_mem_low_computation()
+                         * in the next call to tab_complete_internal_low_comp()
                          * otherwise, we wait for the find match thread to join
                          */
                         struct find_matches_arg fma;
@@ -522,13 +509,12 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, struct
                   if(*free_s)free(ret);
 
                   reset_term();
-                  return tab_complete_internal_extra_mem_low_computation(tbc, shared, recurse_str, tmplen, &match, iter_opts, bytes_read, free_s);
+                  return tab_complete_internal_low_comp(tbc, shared, recurse_str, tmplen, &match, iter_opts, bytes_read, free_s);
 
             }
 
             reset_term();
 
-            /*if(base_match && *end_ptr)free(*end_ptr);*/
             free(match);
       }
       free_tracked(shared);
@@ -543,7 +529,7 @@ char* tab_complete(struct tabcom* tbc, char iter_opts[2], int* bytes_read, _Bool
       #else
       struct shared_d shared;
       init_shared(&shared);
-      char* ret = tab_complete_internal_extra_mem_low_computation(tbc, &shared, NULL, 0, NULL, iter_opts, bytes_read, free_s);
+      char* ret = tab_complete_internal_low_comp(tbc, &shared, NULL, 0, NULL, iter_opts, bytes_read, free_s);
       return ret;
       #endif
 }
