@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
@@ -183,7 +184,8 @@ void* find_matches_pth(void* fma_v){
       struct find_matches_arg* fma = (struct find_matches_arg*)fma_v;
       int n_matches;
       *fma->ret = find_matches(fma->tbc, fma->needle, &n_matches);
-      return (void*)n_matches;
+      /* casting n_matches to uintptr_t to avoid an int to pointer cast warning */
+      return (void*)((uintptr_t)n_matches);
 }
 
 int narrow_matches(char** cpp, char* needle){
@@ -327,32 +329,27 @@ void clear_line(int len, char* str){
 
 struct shared_d{
       _Bool thread_spawned;
+      /* this field is used only if !thread_spawned */
+      int n_matches;
 };
 
 pthread_t fmp;
 
 char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, struct shared_d* shared, char* base_str, int bs_len, char*** base_match, char iter_opts[2], int* bytes_read, _Bool* free_s){
-      /* TODO: each time we recurse check to see if any chars have been deleted
-       * should be easy we can just set a flag because we have to manually handle that
-       * anyway
-       * if(ch == wtvr)
-       * if so, narrow the existing char**
-       * implement a function to narrow possibly
-       *
+      /* TODO:
        * all narrowing and recreating/rescanning/initial scanning should be done in different threads
-       * this will allow 
        *
        * i actually think this is important
        * each time a character is entered we create an initial scan
        * or maybe when strings with >= 2 chars are entered
        *
-       * i can even create a complex system where each time a new char is appended we can add a new char** of
+       * i can even create a system where each time a new char is appended we can add a new char** of
        * adjustments to the base char** 
        * each time a char is deleted from current stream we pop off the relevant char**
        * until the base char** which was created from find_matches() has been removed
        */
       _Bool tab;
-      char* ret = getline_raw_internal(base_str, bs_len, bytes_read, &tab, NULL), ** tmp_str, ** match = NULL, ** end_ptr = NULL;
+      char* ret = getline_raw_internal(base_str, bs_len, bytes_read, &tab, NULL), ** tmp_str, ** match = NULL;
       /* ret is only null if ctrl-c */
       *free_s = ret;
 
@@ -368,7 +365,10 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, struct
                         pthread_join(fmp, (void*)&n_matches);
                         shared->thread_spawned = 0;
                   }
-                  /* n_char_equiv is essentially checking if chars have been removed in getline_raw()
+                  /* if we don't need to join thread, n_matches is stored in shared */
+                  else n_matches = shared->n_matches;
+
+                  /* n_char_equiv is essentially ensuring that no chars have been removed in getline_raw()
                    * this is the only circumstance that base_match is usable
                    */
                   if(base_str && bs_len && n_char_equiv(base_str, ret, bs_len)){
@@ -381,13 +381,7 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, struct
                   }
             }
             if(new_search){
-                  /* this should only happen when chars have been deleted */
-                  if(base_match){
-                        /* locking here in case the find_matches() thread is still working on match */
-                        /*pthread_mutex_lock(&match_gen_lock);*/
-                        free(*base_match);
-                        /*pthread_mutex_unlock(&match_gen_lock);*/
-                  }
+                  if(base_match)free(*base_match);
                   match = find_matches(tbc, ret, &n_matches);
             }
             }
@@ -437,10 +431,7 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, struct
                               --tmp_str;
                               continue;
                         }
-                        /* TODO: find_matches should inform us of size of match */
-                        /* if we aren't aware of the last index of match */
-                        if(!end_ptr)end_ptr = tmp_str+(n_matches-1);
-                        tmp_str = end_ptr;
+                        tmp_str = match+(n_matches-1);
                         continue;
                   }
                   /* ctrl-c */
@@ -450,11 +441,7 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, struct
                         break;
                   }
 
-                  /* if we've gotten this far it's time to recurse */
-
-                  /* TODO: if ch == delete, recursing should occur with baselen = tmplen
-                   * other changes must also be made in this case
-                   */
+                  /* if we've gotten this far it's time to ~recurse~ */
 
                   /* deletion */
                   _Bool del = ch == 127 || ch == 8;
@@ -494,17 +481,19 @@ char* tab_complete_internal_extra_mem_low_computation(struct tabcom* tbc, struct
                   }
                   else{
                         /*shared->thread_spawned = 0;*/
-                        if(!end_ptr)end_ptr = tmp_str+(n_matches-1);
+                        /*if(!end_ptr)end_ptr = tmp_str+(n_matches-1);*/
                         recurse_str[tmplen++] = ch;
                         recurse_str[tmplen] = 0;
                         /* adjusting the last index of match to user input */
                         /* TODO: is it a safe assumption that the last index of match
                          * will always be user input 
                          */
-                        *end_ptr = malloc(tmplen);
-                        memcpy(*end_ptr, recurse_str, tmplen);
+                        match[n_matches-1] = malloc(tmplen);
+                        /**end_ptr = malloc(tmplen);*/
+                        /*memcpy(*end_ptr, recurse_str, tmplen);*/
+                        memcpy(match[n_matches-1], recurse_str, tmplen);
 
-                        narrow_matches(match, recurse_str);
+                        shared->n_matches = n_matches-narrow_matches(match, recurse_str);
                   }
                   if(*free_s)free(ret);
 
@@ -529,6 +518,7 @@ char* tab_complete(struct tabcom* tbc, char iter_opts[2], int* bytes_read, _Bool
       #else
       struct shared_d shared;
       shared.thread_spawned = 0;
+      shared.n_matches = 0;
       char* ret = tab_complete_internal_extra_mem_low_computation(tbc, &shared, NULL, 0, NULL, iter_opts, bytes_read, free_s);
       return ret;
       #endif
