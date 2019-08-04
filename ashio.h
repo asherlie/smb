@@ -1,4 +1,4 @@
-#define ASHIO_VER "1.2.6"
+#define ASHIO_VER "1.3.1"
 
 #define LOW_MEM 0
 
@@ -9,7 +9,7 @@ struct tabcom_entry{
 
 struct tabcom{
       struct tabcom_entry* tbce;
-      int n, cap;
+      int n, cap, n_flattened;
 };
 
 /* tabcom operations */
