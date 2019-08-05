@@ -361,7 +361,12 @@ pthread_t fmp;
  * each time a char is deleted from current stream we pop off the relevant char**
  * until the base char** which was created from find_matches() has been removed
  */
-char* tab_complete_internal_low_comp(struct tabcom* tbc, struct shared_d* shared, char* base_str, int bs_len, char*** base_match, char iter_opts[2], int* bytes_read, _Bool* free_s){
+char* tab_complete_internal_low_comp(struct tabcom* tbc, struct shared_d* shared, char* base_str, int bs_len, char*** base_match, char iter_opts[2], int* bytes_read, _Bool* free_s)
+/* optimizations cause this function to crash on mac */
+#ifdef __APPLE__
+__attribute__((optnone))
+#endif
+                        {
       _Bool tab;
       char* ret = getline_raw_internal(base_str, bs_len, bytes_read, &tab, NULL), ** tmp_str, ** match = NULL;
       /* ret is only null if ctrl-c */
@@ -520,6 +525,7 @@ char* tab_complete_internal_low_comp(struct tabcom* tbc, struct shared_d* shared
       free_tracked(shared);
       return ret;
 }
+
 
 /* tab_complete behaves like getline(), but does not include \n char in returned string */
 /* *free_s is set to 1 if returned buffer should be freed */
